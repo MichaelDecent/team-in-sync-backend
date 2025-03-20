@@ -1,9 +1,15 @@
 from os import getenv
 
+from dotenv import load_dotenv
+
 from .base import *
+
+load_dotenv()
+
 
 # Production settings
 DEBUG = getenv("DEBUG", "False") == "True"
+
 
 # Database configuration
 DATABASES = {
