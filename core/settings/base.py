@@ -1,6 +1,7 @@
 from datetime import timedelta
-from pathlib import Path
 from os import getenv
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,6 +10,8 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "127.0.0.1").split(",")
+
+AUTH_USER_MODEL = "users.User"
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -24,14 +27,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-party apps
     "rest_framework",
     "drf_spectacular",
-
     # Local apps
     "apps.users",
-
 ]
 
 MIDDLEWARE = [
@@ -132,5 +132,11 @@ SIMPLE_JWT = {
 }
 
 REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "apps.core.utils.exception_handler.custom_exception_handler",
 }
+
+# Email settings
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
+DEFAULT_FROM_EMAIL = "noreply@example.com"
+FRONTEND_URL = "http://localhost:3000"
