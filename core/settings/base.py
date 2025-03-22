@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "127.0.0.1").split(",")
 
@@ -49,7 +49,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        'DIRS': [BASE_DIR / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -133,10 +133,21 @@ SIMPLE_JWT = {
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "EXCEPTION_HANDLER": "apps.core.utils.exception_handler.custom_exception_handler",
+    "EXCEPTION_HANDLER": "core.utils.exception_handler.custom_exception_handler",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
 }
 
 # Email settings
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"  # For development
-DEFAULT_FROM_EMAIL = "noreply@example.com"
-FRONTEND_URL = "http://localhost:3000"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = getenv("EMAIL_PORT", 465)
+EMAIL_USE_TLS = getenv("EMAIL_USE_TLS", False)
+EMAIL_USE_SSL = getenv("EMAIL_USE_SSL", True)
+EMAIL_HOST_USER = getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = getenv("DEFAULT_FROM_EMAIL")
+
+FRONTEND_URL = getenv("FRONTEND_URL", "http://localhost:3000")
+BACKEND_URL = getenv("BACKEND_URL", "http://localhost:8000")

@@ -114,3 +114,14 @@ class SetNewPasswordSerializer(serializers.Serializer):
                 {"password": "Password fields didn't match."}
             )
         return attrs
+
+
+class ResendVerificationEmailSerializer(serializers.Serializer):
+    """Serializer for resending verification email"""
+
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user found with this email address")
+        return value
