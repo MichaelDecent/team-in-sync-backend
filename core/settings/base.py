@@ -13,6 +13,7 @@ ALLOWED_HOSTS = getenv("ALLOWED_HOSTS", "127.0.0.1").split(",")
 
 AUTH_USER_MODEL = "users.User"
 
+APPEND_SLASH = True
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = getenv("SECRET_KEY", "your-default-secret-key")
