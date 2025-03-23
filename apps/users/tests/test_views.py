@@ -114,6 +114,22 @@ class TestEmailVerification:
         assert "refresh" in response.data["data"]
         assert "access" in response.data["data"]
 
+        # OPTIONAL: Verify token contents
+        import jwt
+
+        # Decode the token to verify user info is embedded
+        access_token = response.data["data"]["access"]
+        decoded_token = jwt.decode(
+            access_token,
+            options={"verify_signature": False},
+        )
+
+        # Verify user details are in the token, including the new verified state
+        assert decoded_token["first_name"] == user.first_name
+        assert decoded_token["last_name"] == user.last_name
+        assert decoded_token["email"] == user.email
+        assert decoded_token["is_verified"] is True
+
     def test_invalid_token(self, api_client):
         """Test verification with an invalid token"""
         url = reverse("users:verify_email", kwargs={"token": uuid.uuid4()})
@@ -178,11 +194,28 @@ class TestLogin:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["success"] is True
         assert "Login successful" in response.data["message"]
-        assert response.data["data"]["user"]["email"] == verified_user.email
 
-        # Check response contains authentication tokens
+        # Just check for tokens, don't need to validate token content in basic test
         assert "refresh" in response.data["data"]
         assert "access" in response.data["data"]
+
+        # OPTIONAL: If you want to check token contents
+        import jwt
+
+        # Decode the token to verify user info is embedded
+        access_token = response.data["data"]["access"]
+        decoded_token = jwt.decode(
+            access_token,
+            options={
+                "verify_signature": False
+            },  # Skip signature verification for testing
+        )
+
+        # Verify user details are in the token
+        assert decoded_token["first_name"] == verified_user.first_name
+        assert decoded_token["last_name"] == verified_user.last_name
+        assert decoded_token["email"] == verified_user.email
+        assert decoded_token["is_verified"] == verified_user.email_verified
 
     def test_login_with_unverified_email(self, user, api_client):
         """Test login with unverified email"""
@@ -219,7 +252,7 @@ class TestLogout:
 
     def test_successful_logout(self, verified_user, auth_client):
         """Test successful logout"""
-        # First login to get refresh token
+        # First login to get refresh token with custom claims
         login_url = reverse("users:login")
         login_data = {
             "email": verified_user.email,
@@ -228,9 +261,10 @@ class TestLogout:
 
         login_response = auth_client.post(login_url, login_data, format="json")
 
-        # Make sure login was successful
+        # Make sure login was successful and has the expected data structure
         assert login_response.status_code == status.HTTP_200_OK
         assert "data" in login_response.data
+        assert "refresh" in login_response.data["data"]
 
         refresh_token = login_response.data["data"]["refresh"]
 

@@ -14,6 +14,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.users.models import EmailVerificationToken
 from core.utils.response import APIResponse
+from core.utils.tokens import get_tokens_for_user
 
 from .serializers import (
     ChangePasswordSerializer,
@@ -93,13 +94,12 @@ class VerifyEmailView(APIView):
 
             verification_token.delete()
 
-            refresh = RefreshToken.for_user(user)
+            tokens = get_tokens_for_user(user)
 
             return APIResponse.success(
                 data={
-                    "refresh": str(refresh),
-                    "access": str(refresh.access_token),
-                    "user": UserSerializer(user).data,
+                    "refresh": tokens["refresh"],
+                    "access": tokens["access"],
                 },
                 message="Email verification successful",
             )
@@ -128,14 +128,12 @@ class LoginView(APIView):
         if not user.email_verified:
             return APIResponse.forbidden(message="Email is not verified")
 
-        # Generate tokens
-        refresh = RefreshToken.for_user(user)
+        tokens = get_tokens_for_user(user)
 
         return APIResponse.success(
             data={
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": UserSerializer(user).data,
+                "refresh": tokens["refresh"],
+                "access": tokens["access"],
             },
             message="Login successful",
         )
