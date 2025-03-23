@@ -15,7 +15,7 @@ AUTH_USER_MODEL = "users.User"
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-t9&pw1=d69p5-7zis!ey^3$1nk9s^)rm*zcy@f^ulxy6#88er^"
+SECRET_KEY = getenv("SECRET_KEY", "your-default-secret-key")
 
 
 # Application definition
