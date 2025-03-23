@@ -150,3 +150,26 @@ DEFAULT_FROM_EMAIL = getenv("DEFAULT_FROM_EMAIL")
 
 FRONTEND_URL = getenv("FRONTEND_URL", "http://localhost:3000")
 BACKEND_URL = getenv("BACKEND_URL", "http://localhost:8000")
+
+CORS_ALLOW_CREDENTIALS = True
+# Security Headers
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
