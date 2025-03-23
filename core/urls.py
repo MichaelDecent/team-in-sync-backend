@@ -16,5 +16,3 @@ urlpatterns = [
     ),
     path(f"{API_V1}users/", include("apps.users.urls")),
 ]
-
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
