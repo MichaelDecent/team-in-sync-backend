@@ -68,7 +68,8 @@ class RegisterView(generics.CreateAPIView):
                 data={"user": UserSerializer(user).data},
                 message="Registration successful. Please check your email to verify your account.",
             )
-        except Exception:
+        except Exception as e:
+            print(f"Error: {e}")
             if "user" in locals():
                 user.delete()
             return APIResponse.bad_request(
@@ -158,9 +159,9 @@ class LogoutView(APIView):
 
 
 @extend_schema(tags=["Authentication"])
-class UserProfileView(generics.RetrieveUpdateAPIView):
+class UserView(generics.RetrieveUpdateAPIView):
     """
-    View for retrieving and updating user profile
+    View for retrieving and updating user
     """
 
     serializer_class = UserSerializer

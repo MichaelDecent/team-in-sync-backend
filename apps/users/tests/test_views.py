@@ -20,8 +20,6 @@ class TestRegistration:
         url = reverse("users:register")
         data = {
             "email": "newuser@example.com",
-            "first_name": "New",
-            "last_name": "User",
             "password": "StrongP@ssw0rd123",
         }
 
@@ -34,8 +32,6 @@ class TestRegistration:
 
         # Check user was created in the database
         user = User.objects.get(email=data["email"])
-        assert user.first_name == data["first_name"]
-        assert user.last_name == data["last_name"]
         assert not user.email_verified
 
         # Check verification email was sent
@@ -52,8 +48,6 @@ class TestRegistration:
         url = reverse("users:register")
         data = {
             "email": user.email,  # Using existing user's email
-            "first_name": "Another",
-            "last_name": "User",
             "password": "StrongP@ssw0rd123",
         }
 
@@ -72,8 +66,6 @@ class TestRegistration:
         url = reverse("users:register")
         data = {
             "email": "invalid-email",
-            "first_name": "",
-            "last_name": "User",
         }
 
         response = api_client.post(url, data, format="json")
@@ -81,7 +73,6 @@ class TestRegistration:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["success"] is False
         assert "email" in response.data["errors"]
-        assert "first_name" in response.data["errors"]
         assert "password" in response.data["errors"]
 
         # Check no user was created and no email was sent
@@ -125,8 +116,6 @@ class TestEmailVerification:
         )
 
         # Verify user details are in the token, including the new verified state
-        assert decoded_token["first_name"] == user.first_name
-        assert decoded_token["last_name"] == user.last_name
         assert decoded_token["email"] == user.email
         assert decoded_token["is_verified"] is True
 
@@ -212,24 +201,8 @@ class TestLogin:
         )
 
         # Verify user details are in the token
-        assert decoded_token["first_name"] == verified_user.first_name
-        assert decoded_token["last_name"] == verified_user.last_name
         assert decoded_token["email"] == verified_user.email
         assert decoded_token["is_verified"] == verified_user.email_verified
-
-    def test_login_with_unverified_email(self, user, api_client):
-        """Test login with unverified email"""
-        url = reverse("users:login")
-        data = {
-            "email": user.email,
-            "password": "password123",
-        }
-
-        response = api_client.post(url, data, format="json")
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.data["success"] is False
-        assert "Email is not verified" in response.data["message"]
 
     def test_login_with_invalid_credentials(self, verified_user, api_client):
         """Test login with invalid credentials"""

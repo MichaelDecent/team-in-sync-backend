@@ -14,14 +14,10 @@ class TestUserModel:
         """Test creating a regular user"""
         user = User.objects.create_user(
             email="testuser@example.com",
-            first_name="Test",
-            last_name="User",
             password="password123",
         )
 
         assert user.email == "testuser@example.com"
-        assert user.first_name == "Test"
-        assert user.last_name == "User"
         assert user.check_password("password123")
         assert not user.is_staff
         assert not user.is_superuser
@@ -32,14 +28,10 @@ class TestUserModel:
         """Test creating a superuser"""
         admin = User.objects.create_superuser(
             email="admin@example.com",
-            first_name="Admin",
-            last_name="User",
             password="password123",
         )
 
         assert admin.email == "admin@example.com"
-        assert admin.first_name == "Admin"
-        assert admin.last_name == "User"
         assert admin.check_password("password123")
         assert admin.is_staff
         assert admin.is_superuser
@@ -49,8 +41,6 @@ class TestUserModel:
         """Test User string representation"""
         user = User.objects.create_user(
             email="testuser@example.com",
-            first_name="Test",
-            last_name="User",
             password="password123",
         )
 
@@ -65,8 +55,6 @@ class TestVerificationTokenModel:
         """Test creating a verification token"""
         user = User.objects.create_user(
             email="testuser@example.com",
-            first_name="Test",
-            last_name="User",
             password="password123",
         )
 
@@ -80,8 +68,6 @@ class TestVerificationTokenModel:
         """Test EmailVerificationToken string representation"""
         user = User.objects.create_user(
             email="testuser@example.com",
-            first_name="Test",
-            last_name="User",
             password="password123",
         )
 

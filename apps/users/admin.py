@@ -6,16 +6,18 @@ from .models import User
 
 
 class UserAdmin(BaseUserAdmin):
-    list_display = ("email", "first_name", "last_name", "is_staff")
-    list_filter = ("is_staff", "is_active")
+    # Make sure first_name and last_name are NOT in list_display
+    list_display = ("email", "is_staff", "is_active", "email_verified")
+    list_filter = ("is_staff", "is_active", "email_verified")
+
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Personal info"), {"fields": ("first_name", "last_name")}),
         (
             _("Permissions"),
             {
                 "fields": (
                     "is_active",
+                    "email_verified",
                     "is_staff",
                     "is_superuser",
                     "groups",
@@ -23,8 +25,9 @@ class UserAdmin(BaseUserAdmin):
                 )
             },
         ),
-        (_("Important dates"), {"fields": ("last_login",)}),
+        (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
+
     add_fieldsets = (
         (
             None,
@@ -32,15 +35,18 @@ class UserAdmin(BaseUserAdmin):
                 "classes": ("wide",),
                 "fields": (
                     "email",
-                    "first_name",
-                    "last_name",
                     "password1",
                     "password2",
+                    "email_verified",
+                    "is_staff",
+                    "is_active",
                 ),
             },
         ),
     )
-    search_fields = ("email", "first_name", "last_name")
+
+    readonly_fields = ("last_login", "date_joined")
+    search_fields = ("email",)
     ordering = ("email",)
 
 

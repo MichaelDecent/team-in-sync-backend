@@ -20,8 +20,6 @@ class TestRegisterSerializer:
         """Test serializer with valid data"""
         data = {
             "email": "newuser@example.com",
-            "first_name": "New",
-            "last_name": "User",
             "password": "StrongP@ssw0rd123",
         }
 
@@ -30,8 +28,6 @@ class TestRegisterSerializer:
         assert serializer.is_valid()
         user = serializer.save()
         assert user.email == data["email"]
-        assert user.first_name == data["first_name"]
-        assert user.last_name == data["last_name"]
         assert user.check_password(data["password"])
 
     def test_missing_fields(self):
@@ -43,16 +39,12 @@ class TestRegisterSerializer:
         serializer = RegisterSerializer(data=data)
 
         assert not serializer.is_valid()
-        assert "first_name" in serializer.errors
-        assert "last_name" in serializer.errors
         assert "password" in serializer.errors
 
     def test_duplicate_email(self, user):
         """Test serializer with duplicate email"""
         data = {
-            "email": user.email,  # Using existing email
-            "first_name": "New",
-            "last_name": "User",
+            "email": user.email,
             "password": "password123",
         }
 
@@ -108,26 +100,8 @@ class TestUserSerializer:
         serializer = UserSerializer(verified_user)
 
         assert serializer.data["email"] == verified_user.email
-        assert serializer.data["first_name"] == verified_user.first_name
-        assert serializer.data["last_name"] == verified_user.last_name
         assert serializer.data["is_active"] == verified_user.is_active
         assert "password" not in serializer.data
-
-    def test_update(self, verified_user):
-        """Test updating a user instance"""
-        data = {
-            "first_name": "Updated",
-            "last_name": "Name",
-        }
-
-        serializer = UserSerializer(verified_user, data=data, partial=True)
-
-        assert serializer.is_valid()
-        updated_user = serializer.save()
-        assert updated_user.first_name == data["first_name"]
-        assert updated_user.last_name == data["last_name"]
-        assert updated_user.email == verified_user.email  # Unchanged
-
 
 @pytest.mark.django_db
 class TestChangePasswordSerializer:
