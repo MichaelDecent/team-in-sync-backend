@@ -7,7 +7,7 @@ from .views import (
     RegisterView,
     RequestPasswordResetEmailView,
     ResendVerificationEmailView,
-    UserProfileView,
+    UserView,
     VerifyEmailView,
     RefreshTokenView
 )
@@ -22,7 +22,7 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="logout"),
     path("token/refresh/", RefreshTokenView.as_view(), name="token_refresh"),
     # User profile endpoints
-    path("me/", UserProfileView.as_view(), name="user_profile"),
+    path("me/", UserView.as_view(), name="user_profile"),
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
     # Password reset endpoints
     path(
