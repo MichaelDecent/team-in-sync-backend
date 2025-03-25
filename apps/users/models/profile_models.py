@@ -75,6 +75,26 @@ class UserProfile(models.Model):
             return self.last_name
         return self.user.email
 
+    def is_complete(self):
+        """
+        Check if profile is completely filled out with all required information
+        """
+        required_fields = [
+            self.first_name,
+            self.last_name,
+            self.role,
+            self.experience_level,
+            self.bio,
+        ]
+
+        if not all(required_fields):
+            return False
+
+        if not self.skills.exists():
+            return False
+
+        return True
+
 
 class Skill(models.Model):
     """Model for skills that users can have"""

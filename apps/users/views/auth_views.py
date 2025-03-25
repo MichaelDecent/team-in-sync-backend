@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.users.models import EmailVerificationToken
+from apps.users.models.profile_models import UserProfile
 from core.utils.api_response import APIResponse
 from core.utils.tokens import get_tokens_for_user
 
@@ -92,6 +93,8 @@ class VerifyEmailView(APIView):
 
             user.email_verified = True
             user.save()
+
+            UserProfile.objects.create(user=user)
 
             verification_token.delete()
 

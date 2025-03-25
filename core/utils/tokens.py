@@ -9,7 +9,12 @@ def get_tokens_for_user(user):
 
     refresh["email"] = user.email
     refresh["is_verified"] = user.email_verified
-    refresh["has_profile"] = hasattr(user, "profile")
+
+    has_profile = hasattr(user, "profile")
+    refresh["is_profile_complete"] = False
+
+    if has_profile:
+        refresh["is_profile_complete"] = user.profile.is_complete()
 
     return {
         "refresh": str(refresh),
