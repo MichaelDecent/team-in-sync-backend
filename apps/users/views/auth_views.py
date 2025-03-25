@@ -13,10 +13,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.users.models import EmailVerificationToken
-from core.utils.response import APIResponse
+from core.utils.api_response import APIResponse
 from core.utils.tokens import get_tokens_for_user
 
-from .serializers import (
+from ..serializers.auth_serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
     RegisterSerializer,

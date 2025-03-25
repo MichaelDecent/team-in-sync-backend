@@ -1,3 +1,4 @@
+from cloudinary.models import CloudinaryField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -29,8 +30,12 @@ class UserProfile(models.Model):
     )
     first_name = models.CharField(_("first name"), max_length=150, blank=True)
     last_name = models.CharField(_("last name"), max_length=150, blank=True)
-    profile_picture = models.ImageField(
-        upload_to="profile_pictures/", blank=True, null=True
+    profile_picture = CloudinaryField(
+        "profile_pictures",
+        folder="team_in_sync/profile_pictures",
+        blank=True,
+        null=True,
+        transformation={"width": 300, "height": 300, "crop": "fill"},
     )
     role = models.CharField(
         max_length=30,
@@ -43,6 +48,8 @@ class UserProfile(models.Model):
         default=ExperienceLevelChoices.JUNIOR,
     )
     portfolio_link = models.URLField(_("portfolio link"), blank=True)
+    github_link = models.URLField(_("GitHub link"), blank=True)
+    linkedin_link = models.URLField(_("LinkedIn link"), blank=True)
     bio = models.TextField(_("bio"), blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

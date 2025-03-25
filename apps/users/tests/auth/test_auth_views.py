@@ -98,6 +98,9 @@ class TestEmailVerification:
         user.refresh_from_db()
         assert user.email_verified
 
+        # Check user profile was created
+        assert hasattr(user, "profile")
+
         # Check token was deleted
         assert not EmailVerificationToken.objects.filter(user=user).exists()
 

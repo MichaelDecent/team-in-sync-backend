@@ -2,7 +2,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed
 
-from apps.users.serializers import (
+from apps.users.serializers.auth_serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
     RegisterSerializer,
@@ -102,6 +102,7 @@ class TestUserSerializer:
         assert serializer.data["email"] == verified_user.email
         assert serializer.data["is_active"] == verified_user.is_active
         assert "password" not in serializer.data
+
 
 @pytest.mark.django_db
 class TestChangePasswordSerializer:
