@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "cloudinary",
     # Local apps
     "apps.users",
+    "apps.projects",
 ]
 
 MIDDLEWARE = [
