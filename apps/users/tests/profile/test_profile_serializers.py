@@ -27,7 +27,7 @@ def profile(user):
         user=user,
         first_name="John",
         last_name="Doe",
-        role=RoleChoices.DEVELOPER,
+        role=RoleChoices.SOFTWARE_ENGINEER,
         experience_level=ExperienceLevelChoices.SENIOR,
         bio="Experienced developer",
         portfolio_link="https://portfolio.example.com",

@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class RoleChoices(models.TextChoices):
-    SOFTWARE_ENGINEER = "software_engineer", _("Foftware_Engineer")
+    SOFTWARE_ENGINEER = "software_engineer", _("Software Engineer")
     FRONTEND_ENGINEER = "frontend_engineer", _("Frontend Engineer")
     BACKEND_ENGINEER = "backend_engineer", _("Backend Engineer")
     FULLSTACK_ENGINEER = "fullstack_engineer", _("Fullstack Engineer")

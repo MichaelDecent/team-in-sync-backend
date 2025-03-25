@@ -61,7 +61,7 @@ def profile(verified_user):
         defaults={
             "first_name": "Test",
             "last_name": "User",
-            "role": RoleChoices.DEVELOPER,
+            "role": RoleChoices.SOFTWARE_ENGINEER,
             "experience_level": ExperienceLevelChoices.MID_LEVEL,
             "bio": "Test user bio",
         },

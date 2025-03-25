@@ -94,7 +94,7 @@ class VerifyEmailView(APIView):
             user.email_verified = True
             user.save()
 
-            UserProfile.objects.create(user=user)
+            UserProfile.objects.get_or_create(user=user)
 
             verification_token.delete()
 

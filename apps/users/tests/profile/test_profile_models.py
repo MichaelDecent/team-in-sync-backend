@@ -23,7 +23,7 @@ class TestUserProfileModel:
             user=user,
             first_name="John",
             last_name="Doe",
-            role=RoleChoices.DEVELOPER,
+            role=RoleChoices.SOFTWARE_ENGINEER,
             experience_level=ExperienceLevelChoices.SENIOR,
             bio="Experienced software developer",
             portfolio_link="https://portfolio.example.com",
@@ -34,7 +34,7 @@ class TestUserProfileModel:
         assert profile.user == user
         assert profile.first_name == "John"
         assert profile.last_name == "Doe"
-        assert profile.role == RoleChoices.DEVELOPER
+        assert profile.role == RoleChoices.SOFTWARE_ENGINEER
         assert profile.experience_level == ExperienceLevelChoices.SENIOR
         assert profile.bio == "Experienced software developer"
         assert profile.portfolio_link == "https://portfolio.example.com"
