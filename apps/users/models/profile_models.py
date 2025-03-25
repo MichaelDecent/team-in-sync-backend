@@ -4,7 +4,10 @@ from django.utils.translation import gettext_lazy as _
 
 
 class RoleChoices(models.TextChoices):
-    DEVELOPER = "developer", _("Developer")
+    SOFTWARE_ENGINEER = "software_engineer", _("Foftware_Engineer")
+    FRONTEND_ENGINEER = "frontend_engineer", _("Frontend Engineer")
+    BACKEND_ENGINEER = "backend_engineer", _("Backend Engineer")
+    FULLSTACK_ENGINEER = "fullstack_engineer", _("Fullstack Engineer")
     DESIGNER = "designer", _("Designer")
     PRODUCT_MANAGER = "product_manager", _("Product Manager")
     PROJECT_MANAGER = "project_manager", _("Project Manager")
@@ -40,7 +43,7 @@ class UserProfile(models.Model):
     role = models.CharField(
         max_length=30,
         choices=RoleChoices.choices,
-        default=RoleChoices.DEVELOPER,
+        default=RoleChoices.SOFTWARE_ENGINEER,
     )
     experience_level = models.CharField(
         max_length=30,
