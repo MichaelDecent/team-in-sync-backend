@@ -100,9 +100,19 @@ class Skill(models.Model):
     """Model for skills that users can have"""
 
     name = models.CharField(_("name"), max_length=100, unique=True)
+    role = models.CharField(
+        max_length=30,
+        choices=RoleChoices.choices,
+        default=RoleChoices.SOFTWARE_ENGINEER,
+    )
+
+    class Meta:
+        unique_together = ("name", "role")
+        verbose_name = _("skill")
+        verbose_name_plural = _("skills")
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_role_display()})"
 
 
 class UserSkill(models.Model):

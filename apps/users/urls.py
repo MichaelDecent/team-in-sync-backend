@@ -13,6 +13,7 @@ from .views import (
     UserSkillView,
     UserView,
     VerifyEmailView,
+    SkillView
 )
 
 app_name = "users"
@@ -53,4 +54,7 @@ urlpatterns = [
         UserSkillView.as_view(http_method_names=["delete"]),
         name="delete_user_skill",
     ),
+
+    # Skill URLs
+    path("skills/", SkillView.as_view(), name="user_skills"),
 ]

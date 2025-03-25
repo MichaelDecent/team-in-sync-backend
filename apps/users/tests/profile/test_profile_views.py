@@ -31,8 +31,7 @@ class TestUserProfileView:
         """Test updating profile with valid data."""
         url = reverse("users:user_profile")
         data = {
-            "first_name": "John",
-            "last_name": "Doe",
+            "full_name": "John Doe",
             "role": "designer",
             "bio": "I am a designer",
         }

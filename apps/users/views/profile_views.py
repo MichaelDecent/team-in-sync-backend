@@ -1,11 +1,11 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from core.utils.api_response import APIResponse
 
-from ..models.profile_models import Skill, UserSkill
+from ..models.profile_models import Skill, UserProfile, UserSkill
 from ..serializers.profile_serializers import (
     SkillSerializer,
     UserProfileSerializer,
@@ -31,7 +31,11 @@ class UserProfileView(APIView):
     @extend_schema(responses=UserProfileSerializer, request=UserProfileUpdateSerializer)
     def patch(self, request):
         """Update authenticated user's profile"""
-        profile = request.user.profile
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            return APIResponse.not_found("Profile not found")
+
         serializer = UserProfileUpdateSerializer(
             profile, data=request.data, partial=True
         )
@@ -39,6 +43,7 @@ class UserProfileView(APIView):
         if serializer.is_valid():
             serializer.save()
             updated_profile = UserProfileSerializer(profile)
+
             return APIResponse.success(
                 data=updated_profile.data, message="Profile updated successfully"
             )
@@ -54,9 +59,15 @@ class UserSkillView(APIView):
 
     @extend_schema(responses=SkillSerializer(many=True))
     def get(self, request):
-        """Get list of all available skills"""
-        skills = Skill.objects.all().order_by("name")
-        serializer = SkillSerializer(skills, many=True)
+        """Get list of all available skills, optionally filtered by role"""
+        skills_query = Skill.objects.all().order_by("name")
+
+        # Filter by role if provided
+        role = request.query_params.get("role")
+        if role:
+            skills_query = skills_query.filter(role=role)
+
+        serializer = SkillSerializer(skills_query, many=True)
         return APIResponse.success(data=serializer.data)
 
     @extend_schema(
@@ -85,3 +96,35 @@ class UserSkillView(APIView):
             return APIResponse.success(message="Skill removed successfully")
         except UserSkill.DoesNotExist:
             return APIResponse.not_found("Skill not found")
+
+
+@extend_schema(tags=["Skills"])
+class SkillView(APIView):
+    """View to get all available skills based on role"""
+
+    permission_classes = [
+        IsAuthenticated,
+    ]
+
+    @extend_schema(
+        responses=SkillSerializer(many=True),
+        parameters=[
+            OpenApiParameter(
+                name="role",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Filter skills by role",
+            )
+        ],
+    )
+    def get(self, request):
+        """Get all skills with optional filtering"""
+        skills = Skill.objects.all().order_by("role", "name")
+
+        # Filter by role if provided
+        role = request.query_params.get("role")
+        if role:
+            skills = skills.filter(role=role)
+
+        serializer = SkillSerializer(skills, many=True)
+        return APIResponse.success(data=serializer.data)

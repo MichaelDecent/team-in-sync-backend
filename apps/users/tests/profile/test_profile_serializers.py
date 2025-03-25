@@ -101,8 +101,6 @@ class TestUserProfileSerializer:
         serializer = UserProfileSerializer(profile)
 
         assert serializer.data["id"] == profile.id
-        assert serializer.data["first_name"] == profile.first_name
-        assert serializer.data["last_name"] == profile.last_name
         assert (
             serializer.data["full_name"] == f"{profile.first_name} {profile.last_name}"
         )
@@ -126,8 +124,7 @@ class TestUserProfileUpdateSerializer:
     def test_update_user_profile(self, profile):
         """Test updating a user profile."""
         data = {
-            "first_name": "Jane",
-            "last_name": "Smith",
+            "full_name": "Jane Smith",
             "role": RoleChoices.DESIGNER,
             "bio": "Creative designer with UI/UX focus",
         }
@@ -136,8 +133,7 @@ class TestUserProfileUpdateSerializer:
         assert serializer.is_valid()
         updated_profile = serializer.save()
 
-        assert updated_profile.first_name == data["first_name"]
-        assert updated_profile.last_name == data["last_name"]
+        assert updated_profile.full_name == data["full_name"]
         assert updated_profile.role == data["role"]
         assert updated_profile.bio == data["bio"]
 
