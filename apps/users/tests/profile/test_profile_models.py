@@ -89,7 +89,7 @@ class TestUserProfileModel:
                     "test_image.jpg", img.read(), content_type="image/jpeg"
                 ),
             )
-    
+
         assert profile.profile_picture is not None
 
     def test_one_profile_per_user(self, user):
@@ -109,7 +109,8 @@ class TestSkillModel:
         skill = Skill.objects.create(name="Python")
 
         assert skill.name == "Python"
-        assert str(skill) == "Python"
+        assert skill.role == RoleChoices.SOFTWARE_ENGINEER
+        assert str(skill) == "Python (Software Engineer)"
 
     def test_skill_uniqueness(self):
         """Test that skill names are unique."""

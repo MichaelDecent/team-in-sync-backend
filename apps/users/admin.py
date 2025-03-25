@@ -89,10 +89,10 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 
 class SkillAdmin(admin.ModelAdmin):
-    """Admin configuration for Skill model"""
-
-    list_display = ("name",)
-    search_fields = ("name",)
+    list_display = ('name', 'role')
+    list_filter = ('role',)
+    search_fields = ('name',)
+    ordering = ('role', 'name')
 
 
 class UserSkillAdmin(admin.ModelAdmin):

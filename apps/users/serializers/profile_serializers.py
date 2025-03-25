@@ -6,9 +6,11 @@ from ..models.profile_models import Skill, UserProfile, UserSkill
 class SkillSerializer(serializers.ModelSerializer):
     """Serializer for Skill model"""
 
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+
     class Meta:
         model = Skill
-        fields = ("id", "name")
+        fields = ("id", "name", "role", "role_display")
         read_only_fields = ("id",)
 
 
@@ -35,8 +37,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "user",
-            "first_name",
-            "last_name",
             "full_name",
             "profile_picture",
             "profile_picture_url",
@@ -61,13 +61,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user profile data"""
+
     profile_picture = serializers.ImageField(required=False)
+    full_name = serializers.CharField(required=False)
 
     class Meta:
         model = UserProfile
         fields = (
-            "first_name",
-            "last_name",
+            "full_name",
             "profile_picture",
             "role",
             "experience_level",
@@ -76,6 +77,30 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             "linkedin_link",
             "bio",
         )
+
+    def validate_full_name(self, value):
+        """Validate and split full name into first and last name components"""
+        if not value:
+            return value
+
+        name_parts = value.split(maxsplit=1)
+        if len(name_parts) == 1:
+            self.first_name = name_parts[0]
+            self.last_name = ""
+        else:
+            self.first_name = name_parts[0]
+            self.last_name = name_parts[1]
+
+        return value
+
+    def update(self, instance, validated_data):
+        """Update the user profile with validated data"""
+        if "full_name" in validated_data:
+            validated_data.pop("full_name")
+            instance.first_name = getattr(self, "first_name", instance.first_name)
+            instance.last_name = getattr(self, "last_name", instance.last_name)
+
+        return super().update(instance, validated_data)
 
 
 class UserSkillCreateSerializer(serializers.ModelSerializer):

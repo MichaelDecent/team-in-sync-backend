@@ -13,6 +13,7 @@ from .auth_views import (
 from .profile_views import (
     UserProfileView,
     UserSkillView,
+    SkillView,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "ResendVerificationEmailView",
     "UserProfileView",
     "UserSkillView",
+    "SkillView",
 ]
