@@ -11,6 +11,7 @@ from ..serializers.profile_serializers import (
     UserProfileSerializer,
     UserProfileUpdateSerializer,
     UserSkillCreateSerializer,
+    UserSkillSerializer
 )
 
 
@@ -24,7 +25,10 @@ class UserProfileView(APIView):
     @extend_schema(responses=UserProfileSerializer)
     def get(self, request):
         """Get authenticated user's profile"""
-        profile = request.user.profile
+        try:
+            profile = request.user.profile
+        except UserProfile.DoesNotExist:
+            return APIResponse.not_found("Profile not found")
         serializer = UserProfileSerializer(profile)
         return APIResponse.success(data=serializer.data)
 
@@ -60,14 +64,13 @@ class UserSkillView(APIView):
     @extend_schema(responses=SkillSerializer(many=True))
     def get(self, request):
         """Get list of all available skills, optionally filtered by role"""
-        skills_query = Skill.objects.all().order_by("name")
+        skills_query = UserSkill.objects.all().filter(profile=request.user.profile)
 
-        # Filter by role if provided
         role = request.query_params.get("role")
         if role:
             skills_query = skills_query.filter(role=role)
 
-        serializer = SkillSerializer(skills_query, many=True)
+        serializer = UserSkillSerializer(skills_query, many=True)
         return APIResponse.success(data=serializer.data)
 
     @extend_schema(
@@ -114,17 +117,30 @@ class SkillView(APIView):
                 type=str,
                 location=OpenApiParameter.QUERY,
                 description="Filter skills by role",
-            )
+                required=False,
+            ),
+            OpenApiParameter(
+                name="search",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Search skills by name",
+                required=False,
+            ),
         ],
     )
     def get(self, request):
         """Get all skills with optional filtering"""
-        skills = Skill.objects.all().order_by("role", "name")
+        skills = Skill.objects.all().order_by("name")
 
         # Filter by role if provided
         role = request.query_params.get("role")
         if role:
             skills = skills.filter(role=role)
+
+        # Search by name if provided
+        search = request.query_params.get("search")
+        if search:
+            skills = skills.filter(name__icontains=search)
 
         serializer = SkillSerializer(skills, many=True)
         return APIResponse.success(data=serializer.data)
