@@ -102,14 +102,13 @@ class TestUserSkillView:
 
     def test_get_all_skills(self, auth_client, skill1, skill2):
         """Test getting all available skills."""
-        url = reverse("users:user_skills")
+        url = reverse("users:skills")
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["success"] is True
         assert len(response.data["data"]) == 2
 
-        # Skills should be ordered by name
         skill_names = [s["name"] for s in response.data["data"]]
         assert skill_names == sorted(skill_names)
 
@@ -183,7 +182,6 @@ class TestUserSkillView:
 
     def test_remove_other_users_skill(self, auth_client, user, skill1):
         """Test removing another user's skill."""
-        # Create another user's profile and skill
         other_profile = UserProfile.objects.create(user=user)
         other_user_skill = UserSkill.objects.create(profile=other_profile, skill=skill1)
 

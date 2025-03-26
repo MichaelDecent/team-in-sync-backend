@@ -56,5 +56,5 @@ urlpatterns = [
     ),
 
     # Skill URLs
-    path("skills/", SkillView.as_view(), name="user_skills"),
+    path("skills/", SkillView.as_view(), name="skills"),
 ]

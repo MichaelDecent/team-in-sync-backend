@@ -87,7 +87,6 @@ class TestUserSkillSerializer:
         serializer = UserSkillSerializer(user_skill)
 
         assert serializer.data["id"] == user_skill.id
-        assert serializer.data["skill"] == user_skill.skill.id
         assert serializer.data["skill_details"]["id"] == user_skill.skill.id
         assert serializer.data["skill_details"]["name"] == user_skill.skill.name
 
@@ -113,29 +112,44 @@ class TestUserProfileSerializer:
 
         # Check skills data
         assert len(serializer.data["skills"]) == 1
-        assert serializer.data["skills"][0]["id"] == user_skill.id
-        assert serializer.data["skills"][0]["skill"] == user_skill.skill.id
+        assert serializer.data["skills"][0]["id"] == user_skill.skill.id
+        assert isinstance(serializer.data["skills"][0]["skill_details"], dict)
+        assert serializer.data["skills"][0]["skill_details"]["name"] == user_skill.skill.name
+        assert serializer.data["skills"][0]["skill_details"]["role"] == user_skill.skill.role
 
 
 @pytest.mark.django_db
 class TestUserProfileUpdateSerializer:
     """Test UserProfileUpdateSerializer"""
 
-    def test_update_user_profile(self, profile):
+    def test_update_user_profile(self, profile, skill):
         """Test updating a user profile."""
+        # Create two more skills for testing
+        designer_skill = Skill.objects.create(
+            name="UI Design", role=RoleChoices.DESIGNER
+        )
+
         data = {
             "full_name": "Jane Smith",
             "role": RoleChoices.DESIGNER,
             "bio": "Creative designer with UI/UX focus",
+            "skills": [designer_skill.id],  # Add skills to the update
         }
         serializer = UserProfileUpdateSerializer(profile, data=data, partial=True)
 
         assert serializer.is_valid()
         updated_profile = serializer.save()
 
-        assert updated_profile.full_name == data["full_name"]
+        # Test that basic fields are updated
+        assert updated_profile.first_name == "Jane"
+        assert updated_profile.last_name == "Smith"
         assert updated_profile.role == data["role"]
         assert updated_profile.bio == data["bio"]
+
+        # Test that skills were updated properly
+        user_skills = UserSkill.objects.filter(profile=updated_profile)
+        assert user_skills.count() == 1
+        assert user_skills.first().skill.id == designer_skill.id
 
         # Fields not in the update should remain unchanged
         assert updated_profile.experience_level == profile.experience_level
@@ -177,6 +191,25 @@ class TestUserProfileUpdateSerializer:
 
         # For CloudinaryField, we just check it exists, not the path
         assert updated_profile.profile_picture is not None
+
+    def test_update_with_incompatible_skills(self, profile, skill):
+        """Test updating a profile with skills incompatible with the role."""
+        # Create skills with different roles
+        Skill.objects.create(
+            name="UI Design", role=RoleChoices.DESIGNER
+        )
+
+        # Try to update with designer role but software engineer skill
+        data = {
+            "role": RoleChoices.DESIGNER,
+            "skills": [skill.id],  # This is a SOFTWARE_ENGINEER skill
+        }
+        serializer = UserProfileUpdateSerializer(profile, data=data, partial=True)
+
+        # Should not be valid due to incompatible skills
+        assert not serializer.is_valid()
+        assert "skills" in serializer.errors
+        assert "not compatible" in str(serializer.errors["skills"][0])
 
 
 @pytest.mark.django_db
