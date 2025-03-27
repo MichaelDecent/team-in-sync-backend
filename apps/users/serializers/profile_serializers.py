@@ -1,17 +1,24 @@
 from django.db.models.query import QuerySet
 from rest_framework import serializers
 
-from ..models.profile_models import Skill, UserProfile, UserSkill
+from ..models.profile_models import Role, Skill, UserProfile, UserSkill
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    """Serializer for Role model"""
+
+    class Meta:
+        model = Role
+        fields = ("id", "name", "value")
+        read_only_fields = ("id", "is_default", "created_at")
 
 
 class SkillSerializer(serializers.ModelSerializer):
     """Serializer for Skill model"""
 
-    role_display = serializers.CharField(source="get_role_display", read_only=True)
-
     class Meta:
         model = Skill
-        fields = ("id", "name", "role", "role_display")
+        fields = ("id", "name", "role")
         read_only_fields = ("id",)
 
 
@@ -32,6 +39,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     profile_picture_url = serializers.SerializerMethodField()
     skills = UserSkillSerializer(many=True, read_only=True)
     full_name = serializers.CharField(read_only=True)
+    role = RoleSerializer(read_only=True)
 
     class Meta:
         model = UserProfile
@@ -65,14 +73,7 @@ class SkillsField(serializers.PrimaryKeyRelatedField):
     def to_internal_value(self, data):
         """
         Convert various input formats to list of Skill objects.
-        Handles:
-        - Single ID
-        - List of IDs
-        - Comma-separated string of IDs
         """
-        # Print debugging to see what we're receiving
-        print(f"Raw skills data: {data}")
-
         try:
             if data is None or data == "":
                 return []
@@ -129,19 +130,36 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
     def validate_skills(self, skills):
         """Validate that skills are compatible with the selected role"""
-        print(f"Skills: {skills}")
-        new_role = self.initial_data.get("role", None)
-        if new_role is None and self.instance:
-            new_role = self.instance.role
+        new_role_id = self.initial_data.get("role", None)
+        if new_role_id is None and self.instance and self.instance.role:
+            new_role_id = self.instance.role.id
 
-        if new_role and skills:
-            incompatible_skills = [s for s in skills if s.role != new_role]
+        if not new_role_id or not skills:
+            return skills
 
-            if incompatible_skills:
-                skill_names = [s.name for s in incompatible_skills]
-                raise serializers.ValidationError(
-                    f"The following skills are not compatible with the selected role: {', '.join(skill_names)}"
-                )
+        try:
+            Role.objects.get(id=new_role_id)
+        except Role.DoesNotExist:
+            return skills
+
+        # Flatten the skills list if it contains nested lists
+        flat_skills = []
+        for item in skills:
+            if isinstance(item, list) or isinstance(item, QuerySet):
+                flat_skills.extend(item)
+            else:
+                flat_skills.append(item)
+
+        # Check for incompatible skills
+        incompatible_skills = [
+            s for s in flat_skills if int(s.role.id) != int(new_role_id)
+        ]
+
+        if incompatible_skills:
+            skill_names = [s.name for s in incompatible_skills]
+            raise serializers.ValidationError(
+                f"The following skills are not compatible with the selected role: {', '.join(skill_names)}"
+            )
 
         return skills
 
@@ -162,8 +180,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             flat_skills = []
             for item in skills:
                 if isinstance(item, list) or isinstance(item, QuerySet):
-                    for skill in item:
-                        flat_skills.append(skill)
+                    flat_skills.extend(item)
                 else:
                     flat_skills.append(item)
 
@@ -188,9 +205,19 @@ class UserSkillCreateSerializer(serializers.ModelSerializer):
 
         skill = validated_data.get("skill")
 
-        # Check if the user already has this skill
         if UserSkill.objects.filter(profile=profile, skill=skill).exists():
             raise serializers.ValidationError({"error": "You already have this skill"})
+
+        if not profile.role:
+            raise serializers.ValidationError(
+                {"error": "Profile must have a role before adding skills"}
+            )
+
+        print(f"Profile role: {profile.role.id}, Skill role: {skill.role.id}")
+        if skill.role.id != profile.role.id:
+            raise serializers.ValidationError(
+                {"error": "Skill is not compatible with the selected role"}
+            )
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
         return user_skill

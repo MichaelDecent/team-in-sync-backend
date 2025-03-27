@@ -6,7 +6,7 @@ from django.db import IntegrityError
 
 from apps.users.models.profile_models import (
     ExperienceLevelChoices,
-    RoleChoices,
+    Role,
     Skill,
     UserProfile,
     UserSkill,
@@ -17,13 +17,13 @@ from apps.users.models.profile_models import (
 class TestUserProfileModel:
     """Test the UserProfile model."""
 
-    def test_create_user_profile(self, user):
+    def test_create_user_profile(self, user, software_engineer_role):
         """Test creating a user profile."""
         profile = UserProfile.objects.create(
             user=user,
             first_name="John",
             last_name="Doe",
-            role=RoleChoices.SOFTWARE_ENGINEER,
+            role=software_engineer_role,
             experience_level=ExperienceLevelChoices.SENIOR,
             bio="Experienced software developer",
             portfolio_link="https://portfolio.example.com",
@@ -34,7 +34,7 @@ class TestUserProfileModel:
         assert profile.user == user
         assert profile.first_name == "John"
         assert profile.last_name == "Doe"
-        assert profile.role == RoleChoices.SOFTWARE_ENGINEER
+        assert profile.role == software_engineer_role
         assert profile.experience_level == ExperienceLevelChoices.SENIOR
         assert profile.bio == "Experienced software developer"
         assert profile.portfolio_link == "https://portfolio.example.com"
@@ -99,35 +99,124 @@ class TestUserProfileModel:
         with pytest.raises(IntegrityError):
             UserProfile.objects.create(user=user)
 
+    def test_is_complete_with_all_fields(self, user, software_engineer_role):
+        """Test is_complete method with all required fields."""
+        profile = UserProfile.objects.create(
+            user=user,
+            first_name="John",
+            last_name="Doe",
+            role=software_engineer_role,
+            experience_level=ExperienceLevelChoices.SENIOR,
+            bio="Experienced software developer",
+        )
+
+        # Need a skill for profile to be complete
+        skill = Skill.objects.create(name="Python", role=software_engineer_role)
+        UserSkill.objects.create(profile=profile, skill=skill)
+
+        assert profile.is_complete() is True
+
+    def test_is_complete_missing_fields(self, user, software_engineer_role):
+        """Test is_complete method with missing fields."""
+        profile = UserProfile.objects.create(
+            user=user,
+            first_name="John",
+            # Missing last_name
+            role=software_engineer_role,
+            experience_level=ExperienceLevelChoices.SENIOR,
+            bio="Experienced software developer",
+        )
+
+        # Add a skill
+        skill = Skill.objects.create(name="Python", role=software_engineer_role)
+        UserSkill.objects.create(profile=profile, skill=skill)
+
+        assert profile.is_complete() is False
+
+    def test_is_complete_missing_skills(self, user, software_engineer_role):
+        """Test is_complete method with missing skills."""
+        profile = UserProfile.objects.create(
+            user=user,
+            first_name="John",
+            last_name="Doe",
+            role=software_engineer_role,
+            experience_level=ExperienceLevelChoices.SENIOR,
+            bio="Experienced software developer",
+        )
+
+        # No skills added
+
+        assert profile.is_complete() is False
+
+
+@pytest.mark.django_db
+class TestRoleModel:
+    """Test the Role model."""
+
+    def test_create_role(self):
+        """Test creating a role."""
+        role = Role.objects.create(
+            name="Data Scientist", value="data_scientist", is_default=False
+        )
+
+        assert role.name == "Data Scientist"
+        assert role.value == "data_scientist"
+        assert role.is_default is False
+        assert str(role) == "Data Scientist"
+
+    def test_get_default_roles(self):
+        """Test the get_default_roles method."""
+        default_roles = Role.get_default_roles()
+
+        # Check that all expected default roles are present
+        assert len(default_roles) > 0
+        assert any(r["value"] == "software_engineer" for r in default_roles)
+        assert any(r["value"] == "designer" for r in default_roles)
+
+        # Check the structure of a role
+        role = next(r for r in default_roles if r["value"] == "software_engineer")
+        assert role["name"] == "Software Engineer"
+        assert role["is_default"] is True
+
 
 @pytest.mark.django_db
 class TestSkillModel:
     """Test the Skill model."""
 
-    def test_create_skill(self):
+    def test_create_skill(self, software_engineer_role):
         """Test creating a skill."""
-        skill = Skill.objects.create(name="Python")
+        skill = Skill.objects.create(name="Python", role=software_engineer_role)
 
         assert skill.name == "Python"
-        assert skill.role == RoleChoices.SOFTWARE_ENGINEER
+        assert skill.role == software_engineer_role
         assert str(skill) == "Python (Software Engineer)"
 
-    def test_skill_uniqueness(self):
-        """Test that skill names are unique."""
-        Skill.objects.create(name="Django")
+    def test_skill_uniqueness(self, software_engineer_role):
+        """Test that skill names are unique per role."""
+        Skill.objects.create(name="Django", role=software_engineer_role)
 
         with pytest.raises(IntegrityError):
-            Skill.objects.create(name="Django")
+            Skill.objects.create(name="Django", role=software_engineer_role)
+
+    def test_skill_different_roles(self, software_engineer_role, designer_role):
+        """Test that the same skill name can exist for different roles."""
+        skill1 = Skill.objects.create(name="Wireframing", role=designer_role)
+        skill2 = Skill.objects.create(name="Wireframing", role=software_engineer_role)
+
+        assert skill1.name == skill2.name
+        assert skill1.role != skill2.role
+        assert str(skill1) == "Wireframing (Designer)"
+        assert str(skill2) == "Wireframing (Software Engineer)"
 
 
 @pytest.mark.django_db
 class TestUserSkillModel:
     """Test the UserSkill model."""
 
-    def test_add_skill_to_profile(self, user):
+    def test_add_skill_to_profile(self, user, software_engineer_role):
         """Test adding a skill to a user profile."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="JavaScript")
+        skill = Skill.objects.create(name="JavaScript", role=software_engineer_role)
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
 
@@ -135,11 +224,11 @@ class TestUserSkillModel:
         assert user_skill.skill == skill
         assert str(user_skill) == f"{user.email} - JavaScript"
 
-    def test_skills_relationship(self, user):
+    def test_skills_relationship(self, user, software_engineer_role):
         """Test the relationship between user profiles and skills."""
         profile = UserProfile.objects.create(user=user)
-        skill1 = Skill.objects.create(name="Python")
-        skill2 = Skill.objects.create(name="JavaScript")
+        skill1 = Skill.objects.create(name="Python", role=software_engineer_role)
+        skill2 = Skill.objects.create(name="JavaScript", role=software_engineer_role)
 
         UserSkill.objects.create(profile=profile, skill=skill1)
         UserSkill.objects.create(profile=profile, skill=skill2)
@@ -151,30 +240,30 @@ class TestUserSkillModel:
             "JavaScript",
         }
 
-    def test_unique_user_skill_constraint(self, user):
+    def test_unique_user_skill_constraint(self, user, software_engineer_role):
         """Test that a user can't have the same skill twice."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="React")
+        skill = Skill.objects.create(name="React", role=software_engineer_role)
 
         UserSkill.objects.create(profile=profile, skill=skill)
 
         with pytest.raises(IntegrityError):
             UserSkill.objects.create(profile=profile, skill=skill)
 
-    def test_delete_skill_cascades(self, user):
+    def test_delete_skill_cascades(self, user, software_engineer_role):
         """Test that deleting a skill cascades to UserSkill records."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="TypeScript")
+        skill = Skill.objects.create(name="TypeScript", role=software_engineer_role)
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
         skill.delete()
 
         assert UserSkill.objects.filter(id=user_skill.id).count() == 0
 
-    def test_delete_profile_cascades(self, user):
+    def test_delete_profile_cascades(self, user, software_engineer_role):
         """Test that deleting a profile cascades to UserSkill records."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="Vue")
+        skill = Skill.objects.create(name="Vue", role=software_engineer_role)
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
         profile.delete()
@@ -183,14 +272,8 @@ class TestUserSkillModel:
 
 
 @pytest.mark.django_db
-class TestRoleAndExperienceChoices:
-    """Test the role and experience level choices."""
-
-    def test_role_choices(self, user):
-        """Test setting and retrieving role choices."""
-        profile = UserProfile.objects.create(user=user, role=RoleChoices.DESIGNER)
-        assert profile.role == RoleChoices.DESIGNER
-        assert profile.get_role_display() == "Designer"
+class TestExperienceChoices:
+    """Test the experience level choices."""
 
     def test_experience_level_choices(self, user):
         """Test setting and retrieving experience level choices."""

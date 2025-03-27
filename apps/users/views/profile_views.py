@@ -5,13 +5,14 @@ from rest_framework.views import APIView
 
 from core.utils.api_response import APIResponse
 
-from ..models.profile_models import Skill, UserProfile, UserSkill
+from ..models.profile_models import Role, Skill, UserProfile, UserSkill
 from ..serializers.profile_serializers import (
+    RoleSerializer,
     SkillSerializer,
     UserProfileSerializer,
     UserProfileUpdateSerializer,
     UserSkillCreateSerializer,
-    UserSkillSerializer
+    UserSkillSerializer,
 )
 
 
@@ -143,4 +144,19 @@ class SkillView(APIView):
             skills = skills.filter(name__icontains=search)
 
         serializer = SkillSerializer(skills, many=True)
+        return APIResponse.success(data=serializer.data)
+
+
+@extend_schema(tags=["Roles"])
+class RoleView(APIView):
+    """View for managing roles"""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=RoleSerializer(many=True))
+    def get(self, request):
+        """Get list of all available roles"""
+        roles = Role.objects.all().order_by("name")
+
+        serializer = RoleSerializer(roles, many=True)
         return APIResponse.success(data=serializer.data)

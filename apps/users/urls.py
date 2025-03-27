@@ -1,5 +1,7 @@
 from django.urls import path
 
+from apps.users.views.profile_views import RoleView
+
 from .views import (
     ChangePasswordView,
     LoginView,
@@ -57,4 +59,8 @@ urlpatterns = [
 
     # Skill URLs
     path("skills/", SkillView.as_view(), name="skills"),
+
+    # Role URLs
+    path("roles/", RoleView.as_view(), name="roles"),
+
 ]
