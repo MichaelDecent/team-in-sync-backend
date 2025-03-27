@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
 from .models import EmailVerificationToken, User
-from .models.profile_models import Skill, UserProfile, UserSkill
+from .models.profile_models import Role, Skill, UserProfile, UserSkill
 
 
 class UserSkillInline(admin.TabularInline):
@@ -89,10 +89,10 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ('name', 'role')
-    list_filter = ('role',)
-    search_fields = ('name',)
-    ordering = ('role', 'name')
+    list_display = ("name", "role")
+    list_filter = ("role",)
+    search_fields = ("name",)
+    ordering = ("role", "name")
 
 
 class UserSkillAdmin(admin.ModelAdmin):
@@ -112,9 +112,18 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
     readonly_fields = ("token",)
 
 
+# Add the CustomRole to admin
+class RoleAdmin(admin.ModelAdmin):
+    list_display = ("name", "value", "is_default", "created_at")
+    list_filter = ("is_default",)
+    search_fields = ("name", "value")
+    ordering = ("name",)
+
+
 # Register models with admin site
 admin.site.register(User, UserAdmin)
 admin.site.register(EmailVerificationToken, EmailVerificationTokenAdmin)
 admin.site.register(UserProfile, UserProfileAdmin)
 admin.site.register(Skill, SkillAdmin)
 admin.site.register(UserSkill, UserSkillAdmin)
+admin.site.register(Role, RoleAdmin)

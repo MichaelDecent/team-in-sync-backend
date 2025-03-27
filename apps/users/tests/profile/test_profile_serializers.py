@@ -6,12 +6,11 @@ from rest_framework.exceptions import ValidationError
 
 from apps.users.models.profile_models import (
     ExperienceLevelChoices,
-    RoleChoices,
-    Skill,
     UserProfile,
     UserSkill,
 )
 from apps.users.serializers.profile_serializers import (
+    RoleSerializer,
     SkillSerializer,
     UserProfileSerializer,
     UserProfileUpdateSerializer,
@@ -21,13 +20,13 @@ from apps.users.serializers.profile_serializers import (
 
 
 @pytest.fixture
-def profile(user):
+def profile(user, software_engineer_role):
     """Create and return a test user profile."""
     return UserProfile.objects.create(
         user=user,
         first_name="John",
         last_name="Doe",
-        role=RoleChoices.SOFTWARE_ENGINEER,
+        role=software_engineer_role,
         experience_level=ExperienceLevelChoices.SENIOR,
         bio="Experienced developer",
         portfolio_link="https://portfolio.example.com",
@@ -36,46 +35,57 @@ def profile(user):
     )
 
 
-@pytest.fixture
-def skill():
-    """Create and return a test skill."""
-    return Skill.objects.create(name="Python")
+@pytest.mark.django_db
+class TestRoleSerializer:
+    """Test RoleSerializer"""
 
+    def test_serialize_role(self, software_engineer_role):
+        """Test serializing a role."""
+        serializer = RoleSerializer(software_engineer_role)
 
-@pytest.fixture
-def user_skill(profile, skill):
-    """Create and return a test user skill."""
-    return UserSkill.objects.create(profile=profile, skill=skill)
+        assert serializer.data["id"] == software_engineer_role.id
+        assert serializer.data["name"] == software_engineer_role.name
+        assert serializer.data["value"] == software_engineer_role.value
 
 
 @pytest.mark.django_db
 class TestSkillSerializer:
     """Test SkillSerializer"""
 
-    def test_serialize_skill(self, skill):
+    def test_serialize_skill(self, skill1):
         """Test serializing a skill."""
-        serializer = SkillSerializer(skill)
+        serializer = SkillSerializer(skill1)
 
-        assert serializer.data["id"] == skill.id
-        assert serializer.data["name"] == skill.name
+        assert serializer.data["id"] == skill1.id
+        assert serializer.data["name"] == skill1.name
 
-    def test_deserialize_skill(self):
+    def test_deserialize_skill(self, software_engineer_role):
         """Test deserializing a skill."""
-        data = {"name": "JavaScript"}
+        data = {"name": "JavaScript", "role": software_engineer_role.id}
         serializer = SkillSerializer(data=data)
 
         assert serializer.is_valid()
         skill = serializer.save()
 
         assert skill.name == data["name"]
+        assert skill.role.id == data["role"]
 
-    def test_unique_skill_name(self, skill):
-        """Test that skill names must be unique."""
-        data = {"name": skill.name}
-        serializer = SkillSerializer(data=data)
+    def test_unique_skill_name_per_role(self, skill1, designer_role):
+        """Test that skill names must be unique per role but can repeat across roles."""
+        # Same name, same role - should fail
+        data1 = {"name": skill1.name, "role": skill1.role.id}
+        serializer1 = SkillSerializer(data=data1)
+        assert not serializer1.is_valid()
+        assert "non_field_errors" in serializer1.errors
 
-        assert not serializer.is_valid()
-        assert "name" in serializer.errors
+        # Same name, different role - should succeed
+        data2 = {"name": skill1.name, "role": designer_role.id}
+        serializer2 = SkillSerializer(data=data2)
+        assert serializer2.is_valid()
+        skill2 = serializer2.save()
+
+        assert skill2.name == skill1.name
+        assert skill2.role != skill1.role
 
 
 @pytest.mark.django_db
@@ -89,6 +99,7 @@ class TestUserSkillSerializer:
         assert serializer.data["id"] == user_skill.id
         assert serializer.data["skill_details"]["id"] == user_skill.skill.id
         assert serializer.data["skill_details"]["name"] == user_skill.skill.name
+        assert serializer.data["skill_details"]["role"] == user_skill.skill.role.id
 
 
 @pytest.mark.django_db
@@ -103,7 +114,8 @@ class TestUserProfileSerializer:
         assert (
             serializer.data["full_name"] == f"{profile.first_name} {profile.last_name}"
         )
-        assert serializer.data["role"] == profile.role
+        assert serializer.data["role"]["id"] == profile.role.id
+        assert serializer.data["role"]["name"] == profile.role.name
         assert serializer.data["experience_level"] == profile.experience_level
         assert serializer.data["portfolio_link"] == profile.portfolio_link
         assert serializer.data["github_link"] == profile.github_link
@@ -112,38 +124,38 @@ class TestUserProfileSerializer:
 
         # Check skills data
         assert len(serializer.data["skills"]) == 1
-        assert serializer.data["skills"][0]["id"] == user_skill.skill.id
-        assert isinstance(serializer.data["skills"][0]["skill_details"], dict)
-        assert serializer.data["skills"][0]["skill_details"]["name"] == user_skill.skill.name
-        assert serializer.data["skills"][0]["skill_details"]["role"] == user_skill.skill.role
+        assert "skill_details" in serializer.data["skills"][0]
+        assert (
+            serializer.data["skills"][0]["skill_details"]["name"]
+            == user_skill.skill.name
+        )
+        assert (
+            serializer.data["skills"][0]["skill_details"]["role"]
+            == user_skill.skill.role.id
+        )
 
 
 @pytest.mark.django_db
 class TestUserProfileUpdateSerializer:
     """Test UserProfileUpdateSerializer"""
 
-    def test_update_user_profile(self, profile, skill):
+    def test_update_user_profile(self, profile, designer_role, designer_skill):
         """Test updating a user profile."""
-        # Create two more skills for testing
-        designer_skill = Skill.objects.create(
-            name="UI Design", role=RoleChoices.DESIGNER
-        )
-
         data = {
             "full_name": "Jane Smith",
-            "role": RoleChoices.DESIGNER,
+            "role": designer_role.id,
             "bio": "Creative designer with UI/UX focus",
-            "skills": [designer_skill.id],  # Add skills to the update
+            "skills": [designer_skill.id],
         }
         serializer = UserProfileUpdateSerializer(profile, data=data, partial=True)
 
-        assert serializer.is_valid()
+        assert serializer.is_valid(), f"Validation errors: {serializer.errors}"
         updated_profile = serializer.save()
 
         # Test that basic fields are updated
         assert updated_profile.first_name == "Jane"
         assert updated_profile.last_name == "Smith"
-        assert updated_profile.role == data["role"]
+        assert updated_profile.role.id == data["role"]
         assert updated_profile.bio == data["bio"]
 
         # Test that skills were updated properly
@@ -192,17 +204,12 @@ class TestUserProfileUpdateSerializer:
         # For CloudinaryField, we just check it exists, not the path
         assert updated_profile.profile_picture is not None
 
-    def test_update_with_incompatible_skills(self, profile, skill):
+    def test_update_with_incompatible_skills(self, profile, skill1, designer_role):
         """Test updating a profile with skills incompatible with the role."""
-        # Create skills with different roles
-        Skill.objects.create(
-            name="UI Design", role=RoleChoices.DESIGNER
-        )
-
         # Try to update with designer role but software engineer skill
         data = {
-            "role": RoleChoices.DESIGNER,
-            "skills": [skill.id],  # This is a SOFTWARE_ENGINEER skill
+            "role": designer_role.id,
+            "skills": [skill1.id],
         }
         serializer = UserProfileUpdateSerializer(profile, data=data, partial=True)
 
@@ -216,21 +223,20 @@ class TestUserProfileUpdateSerializer:
 class TestUserSkillCreateSerializer:
     """Test UserSkillCreateSerializer"""
 
-    def test_create_user_skill(self, profile):
+    def test_create_user_skill(self, profile, skill3):
         """Test creating a user skill."""
-        skill = Skill.objects.create(name="Django")
-        data = {"skill": skill.id}
+        data = {"skill": skill3.id}
         serializer = UserSkillCreateSerializer(data=data, context={"profile": profile})
 
         assert serializer.is_valid()
         user_skill = serializer.save()
 
         assert user_skill.profile == profile
-        assert user_skill.skill == skill
+        assert user_skill.skill == skill3
 
-    def test_missing_profile_in_context(self, skill):
+    def test_missing_profile_in_context(self, skill1):
         """Test creating a user skill without profile in context."""
-        data = {"skill": skill.id}
+        data = {"skill": skill1.id}
         serializer = UserSkillCreateSerializer(data=data)
 
         assert serializer.is_valid()
