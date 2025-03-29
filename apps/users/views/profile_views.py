@@ -47,10 +47,20 @@ class UserProfileView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            updated_profile = UserProfileSerializer(profile)
+
+            # Refresh the profile instance to ensure we have latest data
+            profile.refresh_from_db()
+
+            updated_profile = UserProfileSerializer(profile).data
+
+            from core.utils.tokens import get_tokens_for_user
+
+            updated_profile["tokens"] = get_tokens_for_user(request.user)
+
+            updated_profile["is_profile_complete"] = profile.is_complete()
 
             return APIResponse.success(
-                data=updated_profile.data, message="Profile updated successfully"
+                data=updated_profile, message="Profile updated successfully"
             )
 
         return APIResponse.bad_request(serializer.errors)
