@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from core.utils.api_response import APIResponse
+from core.utils.tokens import get_tokens_for_user
 
 from ..models.profile_models import Role, Skill, UserProfile, UserSkill
 from ..serializers.profile_serializers import (
@@ -52,8 +53,6 @@ class UserProfileView(APIView):
             profile.refresh_from_db()
 
             updated_profile = UserProfileSerializer(profile).data
-
-            from core.utils.tokens import get_tokens_for_user
 
             updated_profile["tokens"] = get_tokens_for_user(request.user)
 
