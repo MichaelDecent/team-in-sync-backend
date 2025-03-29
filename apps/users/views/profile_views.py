@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from core.utils.api_response import APIResponse
+from core.utils.tokens import get_tokens_for_user
 
 from ..models.profile_models import Role, Skill, UserProfile, UserSkill
 from ..serializers.profile_serializers import (
@@ -47,10 +48,18 @@ class UserProfileView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            updated_profile = UserProfileSerializer(profile)
+
+            # Refresh the profile instance to ensure we have latest data
+            profile.refresh_from_db()
+
+            updated_profile = UserProfileSerializer(profile).data
+
+            updated_profile["tokens"] = get_tokens_for_user(request.user)
+
+            updated_profile["is_profile_complete"] = profile.is_complete()
 
             return APIResponse.success(
-                data=updated_profile.data, message="Profile updated successfully"
+                data=updated_profile, message="Profile updated successfully"
             )
 
         return APIResponse.bad_request(serializer.errors)
