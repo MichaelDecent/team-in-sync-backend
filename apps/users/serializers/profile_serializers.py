@@ -113,6 +113,25 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             "skills",
         )
 
+    def validate(self, data):
+        """Validate the entire data set to ensure no empty fields are passed."""
+        empty_fields = []
+
+        for field_name, value in data.items():
+            if field_name in ("profile_picture", "skills"):
+                continue
+
+            if (isinstance(value, str) and not value.strip()) or value is None:
+                print(f"Field {field_name} is empty")
+                empty_fields.append(field_name)
+
+        if empty_fields:
+            raise serializers.ValidationError(
+                {field: "This field cannot be empty." for field in empty_fields}
+            )
+
+        return data
+
     def validate_full_name(self, value):
         """Validate and split full name into first and last name components"""
         if not value:
@@ -142,7 +161,6 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         except Role.DoesNotExist:
             return skills
 
-        # Flatten the skills list if it contains nested lists
         flat_skills = []
         for item in skills:
             if isinstance(item, list) or isinstance(item, QuerySet):
@@ -150,7 +168,6 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             else:
                 flat_skills.append(item)
 
-        # Check for incompatible skills
         incompatible_skills = [
             s for s in flat_skills if int(s.role.id) != int(new_role_id)
         ]
