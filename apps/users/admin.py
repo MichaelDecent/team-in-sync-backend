@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import EmailVerificationToken, User
+from .models import EmailVerificationToken, User, UserSocialAuth
 from .models.profile_models import Role, Skill, UserProfile, UserSkill
 
 
@@ -120,7 +120,17 @@ class RoleAdmin(admin.ModelAdmin):
     ordering = ("name",)
 
 
+class UserSocialAuthAdmin(admin.ModelAdmin):
+    """Admin configuration for UserSocialAuth model"""
+
+    list_display = ("user", "provider", "provider_user_id", "created_at")
+    list_filter = ("provider",)
+    search_fields = ("user__email", "provider_email")
+    readonly_fields = ("created_at", "updated_at")
+
+
 # Register models with admin site
+admin.site.register(UserSocialAuth, UserSocialAuthAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(EmailVerificationToken, EmailVerificationTokenAdmin)
 admin.site.register(UserProfile, UserProfileAdmin)
