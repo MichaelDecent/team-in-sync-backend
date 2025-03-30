@@ -1,3 +1,5 @@
+from .auth_models import EmailVerificationToken, User
+from .oauth_model import UserSocialAuth, SocialProvider
 from .profile_models import (
     ExperienceLevelChoices,
     RoleChoices,
@@ -5,7 +7,6 @@ from .profile_models import (
     UserProfile,
     UserSkill,
 )
-from .auth_models import EmailVerificationToken, User
 
 __all__ = [
     "User",
@@ -15,4 +16,6 @@ __all__ = [
     "UserSkill",
     "RoleChoices",
     "ExperienceLevelChoices",
+    "UserSocialAuth",
+    "SocialProvider",
 ]
