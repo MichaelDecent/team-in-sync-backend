@@ -64,8 +64,6 @@ class GoogleOAuthView(APIView):
         try:
             user_info = get_google_user_info_from_token(token)
 
-            print(user_info)
-
             google_user_id = user_info["google_user_id"]
             email = user_info["email"]
             first_name = user_info["first_name"]
