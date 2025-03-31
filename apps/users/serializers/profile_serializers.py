@@ -115,8 +115,8 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
     def validate_role(self, value):
         """Validate that the selected role is not None or empty"""
-        if value is None:
-            raise serializers.ValidationError("Role cannot be empty")
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            raise serializers.ValidationError("Role cannot be empty or whitespace")
         return value
 
     def validate_full_name(self, value):
