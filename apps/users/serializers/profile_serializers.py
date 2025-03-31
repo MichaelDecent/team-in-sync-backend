@@ -113,24 +113,11 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             "skills",
         )
 
-    def validate(self, data):
-        """Validate the entire data set to ensure no empty fields are passed."""
-        empty_fields = []
-
-        for field_name, value in data.items():
-            if field_name in ("profile_picture", "skills"):
-                continue
-
-            if (isinstance(value, str) and not value.strip()) or value is None:
-                print(f"Field {field_name} is empty")
-                empty_fields.append(field_name)
-
-        if empty_fields:
-            raise serializers.ValidationError(
-                {field: "This field cannot be empty." for field in empty_fields}
-            )
-
-        return data
+    def validate_role(self, value):
+        """Validate that the selected role is not None or empty"""
+        if value is None:
+            raise serializers.ValidationError("Role cannot be empty")
+        return value
 
     def validate_full_name(self, value):
         """Validate and split full name into first and last name components"""
