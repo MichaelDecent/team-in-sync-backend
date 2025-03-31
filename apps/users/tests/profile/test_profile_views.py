@@ -3,7 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 
-from apps.users.models.profile_models import UserProfile, UserSkill
+from apps.users.models.profile_models import Role, UserProfile, UserSkill
 
 
 @pytest.mark.django_db
@@ -27,13 +27,12 @@ class TestUserProfileView:
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_update_profile_success(self, auth_client, profile):
+    def test_update_profile_success(self, auth_client, profile, designer_role):
         """Test updating profile with valid data."""
         url = reverse("users:user_profile")
         data = {
-            "first_name": "John",
-            "last_name": "Doe",
-            "role": "designer",
+            "full_name": "John Doe",
+            "role": designer_role.id,  # Use the role ID instead of string
             "bio": "I am a designer",
         }
 
@@ -47,7 +46,7 @@ class TestUserProfileView:
         profile.refresh_from_db()
         assert profile.first_name == "John"
         assert profile.last_name == "Doe"
-        assert profile.role == "designer"
+        assert profile.role.id == designer_role.id
         assert profile.bio == "I am a designer"
 
     @pytest.mark.skipif(reason="Skipping image upload tests in CI environment")
@@ -103,14 +102,13 @@ class TestUserSkillView:
 
     def test_get_all_skills(self, auth_client, skill1, skill2):
         """Test getting all available skills."""
-        url = reverse("users:user_skills")
+        url = reverse("users:skills")
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["success"] is True
         assert len(response.data["data"]) == 2
 
-        # Skills should be ordered by name
         skill_names = [s["name"] for s in response.data["data"]]
         assert skill_names == sorted(skill_names)
 
@@ -123,10 +121,13 @@ class TestUserSkillView:
 
     def test_add_skill_to_profile(self, auth_client, profile, skill1):
         """Test adding a skill to user profile."""
+        print(profile.role)
         url = reverse("users:user_skills")
         data = {"skill": skill1.id}
-
+        
         response = auth_client.post(url, data, format="json")
+
+        print(response.data)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["success"] is True
@@ -184,7 +185,6 @@ class TestUserSkillView:
 
     def test_remove_other_users_skill(self, auth_client, user, skill1):
         """Test removing another user's skill."""
-        # Create another user's profile and skill
         other_profile = UserProfile.objects.create(user=user)
         other_user_skill = UserSkill.objects.create(profile=other_profile, skill=skill1)
 
@@ -199,3 +199,29 @@ class TestUserSkillView:
 
         # Verify skill was not removed
         assert UserSkill.objects.filter(id=other_user_skill.id).exists()
+
+
+@pytest.mark.django_db
+class TestRoleView:
+    """Test the RoleView."""
+
+    def test_get_all_roles(self, auth_client):
+        """Test getting all available roles."""
+        # Create a few custom roles
+        Role.objects.create(name="Test Role 1", value="test_role_1")
+        Role.objects.create(name="Test Role 2", value="test_role_2")
+
+        url = reverse("users:roles")
+        response = auth_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+
+        # Check that all roles are returned
+        roles = response.data["data"]
+        assert len(roles) >= 2  # At least our 2 custom roles
+
+        # Verify the structure of returned roles
+        role_names = [role["name"] for role in roles]
+        assert "Test Role 1" in role_names
+        assert "Test Role 2" in role_names

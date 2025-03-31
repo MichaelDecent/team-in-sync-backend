@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "cloudinary_storage",
     "cloudinary",
+    "social_django",
     # Local apps
     "apps.users",
     "apps.projects",
@@ -50,6 +51,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "social_django.middleware.SocialAuthExceptionMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -65,6 +67,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "social_django.context_processors.backends",
+                "social_django.context_processors.login_redirect",
             ],
         },
     },
@@ -186,10 +190,28 @@ DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 # JWT Settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(getenv("ACCESS_TOKEN_LIFETIME", "10"))),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(getenv("REFRESH_TOKEN_LIFETIME", "7"))),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(getenv("ACCESS_TOKEN_LIFETIME", "10"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(getenv("REFRESH_TOKEN_LIFETIME", "7"))
+    ),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+# Social Auth settings
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = getenv("GOOGLE_OAUTH2_CLIENT_ID", "")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = getenv("GOOGLE_OAUTH2_CLIENT_SECRET", "")
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["email", "profile"]
+
+AUTHENTICATION_BACKENDS = (
+    "social_core.backends.google.GoogleOAuth2",
+    "django.contrib.auth.backends.ModelBackend",
+)
+
+# Configure the redirection URLs
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = "/api/v1/users/social/complete/"
+SOCIAL_AUTH_LOGIN_ERROR_URL = "/api/v1/users/social/error/"

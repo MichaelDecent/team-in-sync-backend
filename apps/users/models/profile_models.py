@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
+# Keep RoleChoices as a fallback for backward compatibility
 class RoleChoices(models.TextChoices):
     SOFTWARE_ENGINEER = "software_engineer", _("Software Engineer")
     FRONTEND_ENGINEER = "frontend_engineer", _("Frontend Engineer")
@@ -15,6 +16,32 @@ class RoleChoices(models.TextChoices):
     DEVOPS_ENGINEER = "devops_engineer", _("DevOps Engineer")
     BUSINESS_ANALYST = "business_analyst", _("Business Analyst")
     OTHER = "other", _("Other")
+
+
+class Role(models.Model):
+    """Model for storing custom roles"""
+
+    name = models.CharField(_("name"), max_length=100, unique=True)
+    value = models.CharField(_("value"), max_length=100, unique=True)
+    is_default = models.BooleanField(_("is default"), default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("role")
+        verbose_name_plural = _("roles")
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def get_default_roles(cls):
+        """Get a list of default roles"""
+        default_roles = []
+        for value, display_name in RoleChoices.choices:
+            default_roles.append(
+                {"value": value, "name": display_name, "is_default": True}
+            )
+        return default_roles
 
 
 class ExperienceLevelChoices(models.TextChoices):
@@ -40,10 +67,12 @@ class UserProfile(models.Model):
         null=True,
         transformation={"width": 300, "height": 300, "crop": "fill"},
     )
-    role = models.CharField(
-        max_length=30,
-        choices=RoleChoices.choices,
-        default=RoleChoices.SOFTWARE_ENGINEER,
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="profiles",
     )
     experience_level = models.CharField(
         max_length=30,
@@ -99,10 +128,18 @@ class UserProfile(models.Model):
 class Skill(models.Model):
     """Model for skills that users can have"""
 
-    name = models.CharField(_("name"), max_length=100, unique=True)
+    name = models.CharField(_("name"), max_length=100)
+    role = models.ForeignKey(
+        Role, on_delete=models.CASCADE, related_name="skills"
+    )
+
+    class Meta:
+        unique_together = ("name", "role")
+        verbose_name = _("skill")
+        verbose_name_plural = _("skills")
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.role.name})"
 
 
 class UserSkill(models.Model):

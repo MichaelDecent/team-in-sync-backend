@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 
 from apps.users.models.profile_models import (
     ExperienceLevelChoices,
-    RoleChoices,
+    Role,
     Skill,
     UserProfile,
     UserSkill,
@@ -54,18 +54,41 @@ def auth_client(verified_user):
 
 
 @pytest.fixture
-def profile(verified_user):
+def software_engineer_role():
+    """Return a default software engineer role"""
+    role, created = Role.objects.get_or_create(
+        value="software_engineer",
+        defaults={"name": "Software Engineer", "is_default": True},
+    )
+    return role
+
+
+@pytest.fixture
+def designer_role():
+    """Return a designer role"""
+    role, created = Role.objects.get_or_create(
+        value="designer", defaults={"name": "Designer", "is_default": True}
+    )
+    return role
+
+
+@pytest.fixture
+def profile(verified_user, software_engineer_role):
     """Return a profile for the verified user"""
     profile, created = UserProfile.objects.get_or_create(
         user=verified_user,
         defaults={
             "first_name": "Test",
             "last_name": "User",
-            "role": RoleChoices.SOFTWARE_ENGINEER,
+            "role": software_engineer_role,
             "experience_level": ExperienceLevelChoices.MID_LEVEL,
             "bio": "Test user bio",
         },
     )
+    # Ensure role is set even if profile already existed
+    if not created and not profile.role:
+        profile.role = software_engineer_role
+        profile.save(update_fields=['role'])
     return profile
 
 
@@ -77,31 +100,48 @@ def empty_profile(user):
 
 
 @pytest.fixture
-def skill1():
+def skill1(software_engineer_role):
     """Return a test skill"""
-    skill, created = Skill.objects.get_or_create(name="Python")
+    skill, created = Skill.objects.get_or_create(
+        name="Python", defaults={"role": software_engineer_role}
+    )
     return skill
 
 
 @pytest.fixture
-def skill2():
+def skill2(software_engineer_role):
     """Return another test skill"""
-    skill, created = Skill.objects.get_or_create(name="JavaScript")
+    skill, created = Skill.objects.get_or_create(
+        name="JavaScript", defaults={"role": software_engineer_role}
+    )
     return skill
 
 
 @pytest.fixture
-def skill3():
+def skill3(software_engineer_role):
     """Return a third test skill"""
-    skill, created = Skill.objects.get_or_create(name="Django")
+    skill, created = Skill.objects.get_or_create(
+        name="Django", defaults={"role": software_engineer_role}
+    )
+    return skill
+
+
+@pytest.fixture
+def designer_skill(designer_role):
+    """Return a designer skill"""
+    skill, created = Skill.objects.get_or_create(
+        name="UI Design", defaults={"role": designer_role}
+    )
     return skill
 
 
 # Update the test files to use skill1 instead of skill
 @pytest.fixture
-def skill():
+def skill(software_engineer_role):
     """Alias for skill1 to maintain compatibility"""
-    skill, created = Skill.objects.get_or_create(name="Python")
+    skill, created = Skill.objects.get_or_create(
+        name="Python", defaults={"role": software_engineer_role}
+    )
     return skill
 
 

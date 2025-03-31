@@ -10,7 +10,13 @@ from .auth_views import (
     UserView,
     VerifyEmailView,
 )
+from .google_Oauth_views import (
+    GoogleOAuthLoginView,
+    GoogleOAuthView,
+)
 from .profile_views import (
+    RoleView,
+    SkillView,
     UserProfileView,
     UserSkillView,
 )
@@ -28,4 +34,8 @@ __all__ = [
     "ResendVerificationEmailView",
     "UserProfileView",
     "UserSkillView",
+    "SkillView",
+    "RoleView",
+    "GoogleOAuthView",
+    "GoogleOAuthLoginView",
 ]

@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import EmailVerificationToken, User
-from .models.profile_models import Skill, UserProfile, UserSkill
+from .models import EmailVerificationToken, User, UserSocialAuth
+from .models.profile_models import Role, Skill, UserProfile, UserSkill
 
 
 class UserSkillInline(admin.TabularInline):
@@ -89,10 +89,10 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 
 class SkillAdmin(admin.ModelAdmin):
-    """Admin configuration for Skill model"""
-
-    list_display = ("name",)
+    list_display = ("name", "role")
+    list_filter = ("role",)
     search_fields = ("name",)
+    ordering = ("role", "name")
 
 
 class UserSkillAdmin(admin.ModelAdmin):
@@ -112,9 +112,28 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
     readonly_fields = ("token",)
 
 
+# Add the CustomRole to admin
+class RoleAdmin(admin.ModelAdmin):
+    list_display = ("name", "value", "is_default", "created_at")
+    list_filter = ("is_default",)
+    search_fields = ("name", "value")
+    ordering = ("name",)
+
+
+class UserSocialAuthAdmin(admin.ModelAdmin):
+    """Admin configuration for UserSocialAuth model"""
+
+    list_display = ("user", "provider", "provider_user_id", "created_at")
+    list_filter = ("provider",)
+    search_fields = ("user__email", "provider_email")
+    readonly_fields = ("created_at", "updated_at")
+
+
 # Register models with admin site
+admin.site.register(UserSocialAuth, UserSocialAuthAdmin)
 admin.site.register(User, UserAdmin)
 admin.site.register(EmailVerificationToken, EmailVerificationTokenAdmin)
 admin.site.register(UserProfile, UserProfileAdmin)
 admin.site.register(Skill, SkillAdmin)
 admin.site.register(UserSkill, UserSkillAdmin)
+admin.site.register(Role, RoleAdmin)

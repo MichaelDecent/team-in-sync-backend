@@ -2,6 +2,8 @@ from django.urls import path
 
 from .views import (
     ChangePasswordView,
+    GoogleOAuthLoginView,
+    GoogleOAuthView,
     LoginView,
     LogoutView,
     PasswordResetConfirmView,
@@ -9,6 +11,8 @@ from .views import (
     RegisterView,
     RequestPasswordResetEmailView,
     ResendVerificationEmailView,
+    RoleView,
+    SkillView,
     UserProfileView,
     UserSkillView,
     UserView,
@@ -41,6 +45,11 @@ urlpatterns = [
         ResendVerificationEmailView.as_view(),
         name="resend_verification_email",
     ),
+    # Google OAuth URLs
+    path("google-oauth/", GoogleOAuthView.as_view(), name="google_oauth"),
+    path(
+        "auth/google/login/", GoogleOAuthLoginView.as_view(), name="google_oauth_login"
+    ),
     # Profile URLs
     path("profile/", UserProfileView.as_view(), name="user_profile"),
     path(
@@ -53,4 +62,8 @@ urlpatterns = [
         UserSkillView.as_view(http_method_names=["delete"]),
         name="delete_user_skill",
     ),
+    # Skill URLs
+    path("skills/", SkillView.as_view(), name="skills"),
+    # Role URLs
+    path("roles/", RoleView.as_view(), name="roles"),
 ]
