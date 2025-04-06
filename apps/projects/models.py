@@ -8,7 +8,7 @@ class Project(models.Model):
     """Model for projects that users can create and collaborate on"""
 
     STATUS_CHOICES = (
-        ("planning", _("Planning")),
+        ("pending", _("Pending")),
         ("in_progress", _("In Progress")),
         ("completed", _("Completed")),
         ("on_hold", _("On Hold")),
