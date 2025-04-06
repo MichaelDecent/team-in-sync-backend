@@ -15,7 +15,6 @@ from .serializers import (
 )
 
 
-# Create a FilterSet for Project filtering
 class ProjectFilter(filters.FilterSet):
     role = filters.CharFilter(field_name="required_roles__role")
     skill = filters.NumberFilter(field_name="required_roles__required_skills__skill")
@@ -27,7 +26,7 @@ class ProjectFilter(filters.FilterSet):
 
     def filter_member_of(self, queryset, name, value):
         user = self.request.user
-        if value:  # Only filter if value is True
+        if value:
             return queryset.filter(team_members=user)
         return queryset
 
@@ -38,12 +37,9 @@ class IsProjectOwnerOrReadOnly(permissions.BasePermission):
     """
 
     def has_object_permission(self, request, view, obj):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Write permissions are only allowed to the owner of the project
         return obj.owner == request.user
 
 
@@ -93,13 +89,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         """List projects where the current user is a member"""
         queryset = Project.objects.filter(team_members=request.user)
 
-        # Apply filters from query params
         queryset = self.filter_queryset(queryset)
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -133,18 +123,10 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-    @action(detail=False, methods=["get"])
-    def my_memberships(self, request):
-        """Endpoint to get current user's project memberships"""
-        memberships = ProjectMembership.objects.filter(user=request.user)
-        serializer = self.get_serializer(memberships, many=True)
-        return Response(serializer.data)
-
     def create(self, request, *args, **kwargs):
         """Create a membership (join request)"""
         response = super().create(request, *args, **kwargs)
 
-        # Send notification to project owner
         membership = ProjectMembership.objects.get(id=response.data["id"])
         NotificationService.create_join_request_notification(membership)
 
@@ -156,7 +138,6 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
         membership = self.get_object()
         status = request.data.get("status")
 
-        # Only project owner can update status
         if request.user != membership.project.owner:
             return Response(
                 {"detail": "Only project owner can update membership status."},
@@ -166,7 +147,6 @@ class ProjectMembershipViewSet(viewsets.ModelViewSet):
         membership.status = status
         membership.save()
 
-        # Send notification to requesting user
         accepted = status == "approved"
         NotificationService.create_request_response_notification(membership, accepted)
 

@@ -172,18 +172,3 @@ class TestProjectMembershipViewSet:
         membership = ProjectMembership.objects.get(id=response.data["id"])
         assert membership.user_id == data["user"]
         assert membership.project_id == data["project"]
-
-    def test_my_memberships(self, auth_client, user, project):
-        """Test getting current user's memberships"""
-        # Create a membership for the authenticated user
-        membership = ProjectMembership.objects.create(
-            user=user, project=project, role="designer", status="approved"
-        )
-
-        url = reverse("projects:memberships-my-memberships")
-        response = auth_client.get(url)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["id"] == membership.id
-        assert response.data[0]["user"] == user.id
