@@ -14,4 +14,5 @@ urlpatterns = [
     ),
     path(f"{API_V1}users/", include("apps.users.urls")),
     path(f"{API_V1}projects/", include("apps.projects.urls")),
+    path(f"{API_V1}notifications/", include(("apps.notifications.urls", "notifications"))),
 ]

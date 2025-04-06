@@ -36,9 +36,11 @@ INSTALLED_APPS = [
     "cloudinary_storage",
     "cloudinary",
     "social_django",
+    "django_filters",
     # Local apps
     "apps.users",
     "apps.projects",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
