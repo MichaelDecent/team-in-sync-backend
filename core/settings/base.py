@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "social_django",
     # Local apps
     "apps.users",
+    "apps.projects",
 ]
 
 MIDDLEWARE = [

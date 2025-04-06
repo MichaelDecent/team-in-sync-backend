@@ -1,4 +1,3 @@
-from cloudinary.models import CloudinaryField
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -9,7 +8,7 @@ class Project(models.Model):
     """Model for projects that users can create and collaborate on"""
 
     STATUS_CHOICES = (
-        ("planning", _("Planning")),
+        ("pending", _("Pending")),
         ("in_progress", _("In Progress")),
         ("completed", _("Completed")),
         ("on_hold", _("On Hold")),
@@ -18,9 +17,6 @@ class Project(models.Model):
 
     title = models.CharField(max_length=200)
     description = models.TextField()
-    cover_image = CloudinaryField(
-        "project_covers", folder="team_in_sync/project_covers", blank=True, null=True
-    )
     owner = models.ForeignKey(
         "users.User", on_delete=models.CASCADE, related_name="owned_projects"
     )
