@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block content %}
+<div id="content-main">
+    <form method="post">
+        {% csrf_token %}
+        <div>
+            <fieldset class="module aligned">
+                {% for field in form %}
+                    <div class="form-row">
+                        <div class="field-box">
+                            {{ field.errors }}
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                            <div class="help">{{ field.help_text|safe }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </fieldset>
+        </div>
+        <div class="submit-row">
+            <input type="submit" value="Send Notification" class="default" name="_save">
+        </div>
+    </form>
+</div>
+{% endblock %}
