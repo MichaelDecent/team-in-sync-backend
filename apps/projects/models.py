@@ -50,7 +50,7 @@ class ProjectRole(models.Model):
     number_required = models.PositiveIntegerField(default=1)
 
     def __str__(self):
-        role_name = self.get_role_display() if self.role else self.custom_role_name
+        role_name = self.get_role_display
         return f"{self.project.title} - {role_name}"
 
     class Meta:
@@ -81,7 +81,11 @@ class ProjectRoleSkill(models.Model):
         ProjectRole, on_delete=models.CASCADE, related_name="required_skills"
     )
     skill = models.ForeignKey(
-        Skill, on_delete=models.CASCADE, related_name="project_roles", null=True, blank=True
+        Skill,
+        on_delete=models.CASCADE,
+        related_name="project_roles",
+        null=True,
+        blank=True,
     )
     custom_skill_name = models.CharField(max_length=100, null=True, blank=True)
 
@@ -124,7 +128,7 @@ class ProjectMembership(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     def __str__(self):
-        return f"{self.user.email} - {self.project.title} - {self.get_role_display()}"
+        return f"{self.user.email} - {self.project.title} - {self.role.get_role_display}"
 
     class Meta:
         unique_together = ("user", "project", "role")

@@ -2,7 +2,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.notifications.models import Notification, NotificationType
-from apps.projects.models import Project, ProjectMembership
+from apps.projects.models import Project, ProjectMembership, ProjectRole
 from apps.users.tests.factories import VerifiedUserFactory
 
 
@@ -50,10 +50,13 @@ def project(owner):
 @pytest.fixture
 def membership(project, requester):
     """Return a project membership (join request)"""
+    designer_role = ProjectRole.objects.create(
+        project=project, custom_role_name="Designer", number_required=1
+    )
     return ProjectMembership.objects.create(
         project=project,
         user=requester,
-        role="designer",
+        role=designer_role,
         status="pending",
     )
 

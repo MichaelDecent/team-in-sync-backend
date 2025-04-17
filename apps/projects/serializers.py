@@ -46,7 +46,11 @@ class ProjectRoleSerializer(serializers.ModelSerializer):
         child=serializers.CharField(), write_only=True, required=False, default=list
     )
     role_id = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(), required=False, allow_null=True, write_only=True
+        queryset=Role.objects.all(),
+        required=False,
+        allow_null=True,
+        write_only=True,
+        source="role",
     )
     custom_role_name = serializers.CharField(required=False, allow_null=True)
     role_name = serializers.CharField(source="get_role_display", read_only=True)
@@ -147,9 +151,13 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectMembershipSerializer(serializers.ModelSerializer):
     """Serializer for project membership"""
 
+    role_id = serializers.PrimaryKeyRelatedField(
+        source="role", queryset=ProjectRole.objects.all()
+    )
+
     class Meta:
         model = ProjectMembership
-        fields = ["id", "user", "project", "role", "status", "joined_at"]
+        fields = ["id", "user", "project", "role_id", "status", "joined_at"]
         read_only_fields = ["id", "joined_at"]
 
 
