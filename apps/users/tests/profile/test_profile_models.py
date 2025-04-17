@@ -164,20 +164,6 @@ class TestRoleModel:
         assert role.is_default is False
         assert str(role) == "Data Scientist"
 
-    def test_get_default_roles(self):
-        """Test the get_default_roles method."""
-        default_roles = Role.get_default_roles()
-
-        # Check that all expected default roles are present
-        assert len(default_roles) > 0
-        assert any(r["value"] == "software_engineer" for r in default_roles)
-        assert any(r["value"] == "designer" for r in default_roles)
-
-        # Check the structure of a role
-        role = next(r for r in default_roles if r["value"] == "software_engineer")
-        assert role["name"] == "Software Engineer"
-        assert role["is_default"] is True
-
 
 @pytest.mark.django_db
 class TestSkillModel:

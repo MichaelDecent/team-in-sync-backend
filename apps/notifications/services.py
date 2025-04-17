@@ -12,16 +12,18 @@ class NotificationService:
         requester = membership.user
         owner = project.owner
 
+        print(f"members role {membership.role.get_role_display}")
+
         Notification.objects.create(
             recipient=owner,
             type=NotificationType.JOIN_REQUEST,
             title=f"New join request for {project.title}",
-            message=f"{requester.email} has requested to join your project as a {membership.get_role_display()}.",
+            message=f"{requester.email} has requested to join your project as a {membership.role.get_role_display}.",
             related_project=project,
             related_user=requester,
             data={
                 "membership_id": membership.id,
-                "role": membership.role,
+                "role_id": membership.role.id,
             },
         )
 
@@ -37,7 +39,7 @@ class NotificationService:
             else NotificationType.REQUEST_REJECTED
         )
         title = f"Request {'accepted' if accepted else 'rejected'} for {project.title}"
-        message = f"Your request to join {project.title} as a {membership.get_role_display()} has been {'accepted' if accepted else 'rejected'}."
+        message = f"Your request to join {project.title} as a {membership.role.get_role_display} has been {'accepted' if accepted else 'rejected'}."
 
         Notification.objects.create(
             recipient=requester,

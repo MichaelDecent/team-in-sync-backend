@@ -118,6 +118,11 @@ class RoleAdmin(admin.ModelAdmin):
     list_filter = ("is_default",)
     search_fields = ("name", "value")
     ordering = ("name",)
+    readonly_fields = ("created_at",)
+
+    fieldsets = (
+        (None, {"fields": ("name", "is_default")}),
+    )
 
 
 class UserSocialAuthAdmin(admin.ModelAdmin):

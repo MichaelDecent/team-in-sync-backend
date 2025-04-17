@@ -3,21 +3,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-# Keep RoleChoices as a fallback for backward compatibility
-class RoleChoices(models.TextChoices):
-    SOFTWARE_ENGINEER = "software_engineer", _("Software Engineer")
-    FRONTEND_ENGINEER = "frontend_engineer", _("Frontend Engineer")
-    BACKEND_ENGINEER = "backend_engineer", _("Backend Engineer")
-    FULLSTACK_ENGINEER = "fullstack_engineer", _("Fullstack Engineer")
-    DESIGNER = "designer", _("Designer")
-    PRODUCT_MANAGER = "product_manager", _("Product Manager")
-    PROJECT_MANAGER = "project_manager", _("Project Manager")
-    QA_ENGINEER = "qa_engineer", _("QA Engineer")
-    DEVOPS_ENGINEER = "devops_engineer", _("DevOps Engineer")
-    BUSINESS_ANALYST = "business_analyst", _("Business Analyst")
-    OTHER = "other", _("Other")
-
-
 class Role(models.Model):
     """Model for storing custom roles"""
 
@@ -30,18 +15,14 @@ class Role(models.Model):
         verbose_name = _("role")
         verbose_name_plural = _("roles")
 
+    def save(self, *args, **kwargs):
+        """Override save method to ensure unique value for each role"""
+        if self.name:
+            self.value = self.name.lower().replace(" ", "_")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
-
-    @classmethod
-    def get_default_roles(cls):
-        """Get a list of default roles"""
-        default_roles = []
-        for value, display_name in RoleChoices.choices:
-            default_roles.append(
-                {"value": value, "name": display_name, "is_default": True}
-            )
-        return default_roles
 
 
 class ExperienceLevelChoices(models.TextChoices):
@@ -129,9 +110,7 @@ class Skill(models.Model):
     """Model for skills that users can have"""
 
     name = models.CharField(_("name"), max_length=100)
-    role = models.ForeignKey(
-        Role, on_delete=models.CASCADE, related_name="skills"
-    )
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="skills")
 
     class Meta:
         unique_together = ("name", "role")

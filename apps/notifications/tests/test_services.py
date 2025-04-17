@@ -30,7 +30,7 @@ class TestNotificationService:
         assert notification.related_project == membership.project
         assert notification.related_user == membership.user
         assert notification.data["membership_id"] == membership.id
-        assert notification.data["role"] == membership.role
+        assert notification.data["role_id"] == membership.role.id
 
     def test_create_request_accepted_notification(self, membership, requester):
         """Test creating a request accepted notification"""

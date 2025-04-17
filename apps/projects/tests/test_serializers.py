@@ -1,5 +1,6 @@
 import pytest
 
+from apps.projects.models import ProjectRole
 from apps.projects.serializers import (
     ProjectDetailSerializer,
     ProjectMembershipSerializer,
@@ -13,35 +14,82 @@ from apps.projects.serializers import (
 class TestProjectRoleSkillSerializer:
     """Test ProjectRoleSkillSerializer"""
 
-    def test_serialize_project_role_skill(self, project_role_skill):
-        """Test serializing a project role skill"""
+    def test_serialize_project_role_skill_with_predefined_skill(
+        self, project_role_skill
+    ):
+        """Test serializing a project role skill with predefined skill"""
         serializer = ProjectRoleSkillSerializer(project_role_skill)
         data = serializer.data
 
         assert data["id"] == project_role_skill.id
-        assert data["skill"] == project_role_skill.skill.id
+        assert "skill_name" in data
+        assert data["skill_name"] == project_role_skill.skill.name
+        assert "custom_skill_name" in data
+        assert data["custom_skill_name"] is None
+
+    def test_validate_either_skill_or_custom_name_required(self, role):
+        """Test validation that either skill or custom_skill_name is required"""
+        # Test with neither field provided
+        serializer = ProjectRoleSerializer(data={"number_required": 1})
+        assert not serializer.is_valid()
+        assert "Either role or custom_role_name must be provided" in str(
+            serializer.errors
+        )
+
+        # Test with both fields provided - use role_id consistently since that's what your API expects
+        serializer = ProjectRoleSerializer(
+            data={
+                "role_id": role.id,
+                "custom_role_name": "Test",
+                "number_required": 1,
+            }
+        )
+        assert not serializer.is_valid()
+        assert "Only one of role or custom_role_name should be provided" in str(
+            serializer.errors
+        )
+
+    def test_create_with_custom_skill_name(self, project_role):
+        """Test creating project role skill with custom skill name"""
+        serializer = ProjectRoleSkillSerializer(data={"custom_skill_name": "GraphQL"})
+        assert serializer.is_valid(), f"Validation errors: {serializer.errors}"
+
+        skill = serializer.save(project_role=project_role)
+        assert skill.project_role == project_role
+        assert skill.skill is None
+        assert skill.custom_skill_name == "GraphQL"
 
 
 @pytest.mark.django_db
 class TestProjectRoleSerializer:
     """Test ProjectRoleSerializer"""
 
-    def test_serialize_project_role(self, project_role, project_role_skill):
-        """Test serializing a project role"""
+    def test_serialize_project_role_with_predefined_role(
+        self, project_role, project_role_skill, role
+    ):
+        """Test serializing a project role with predefined role"""
+        # Update project_role to use the role fixture
+        project_role.role = role
+        project_role.save()
+
         serializer = ProjectRoleSerializer(project_role)
         data = serializer.data
 
         assert data["id"] == project_role.id
-        assert data["role"] == project_role.role
+        assert "role_name" in data
+        assert data["role_name"] == role.name
+        assert "custom_role_name" in data
+        assert data["custom_role_name"] is None
         assert data["number_required"] == project_role.number_required
         assert len(data["required_skills"]) == 1
         assert data["required_skills"][0]["id"] == project_role_skill.id
 
-    def test_create_project_role_with_skills(self, project, skill):
-        """Test creating a project role with skills"""
+    def test_create_project_role_with_predefined_role_and_skills(
+        self, project, role, skill
+    ):
+        """Test creating a project role with predefined role and skills"""
         data = {
-            "project": project.id,
-            "role": "designer",
+            "role_id": role.id,
             "number_required": 2,
             "skill_ids": [skill.id],
         }
@@ -52,42 +100,105 @@ class TestProjectRoleSerializer:
         project_role = serializer.save(project=project)
 
         assert project_role.project == project
-        assert project_role.role == "designer"
+        assert project_role.role == role
+        assert project_role.custom_role_name is None
         assert project_role.number_required == 2
         assert project_role.required_skills.count() == 1
         assert project_role.required_skills.first().skill.id == skill.id
+
+    def test_create_project_role_with_custom_role_and_skills(self, project, skill):
+        """Test creating a project role with custom role name and skills"""
+        data = {
+            "custom_role_name": "DevSecOps Engineer",
+            "number_required": 1,
+            "skill_ids": [skill.id],
+        }
+
+        serializer = ProjectRoleSerializer(data=data)
+        assert serializer.is_valid(), f"Validation errors: {serializer.errors}"
+
+        project_role = serializer.save(project=project)
+
+        assert project_role.project == project
+        assert project_role.role is None
+        assert project_role.custom_role_name == "DevSecOps Engineer"
+        assert project_role.number_required == 1
+        assert project_role.required_skills.count() == 1
+        assert project_role.required_skills.first().skill.id == skill.id
+
+    def test_create_project_role_with_custom_role_and_custom_skills(self, project):
+        """Test creating a project role with both custom role and custom skills"""
+        data = {
+            "custom_role_name": "AI Researcher",
+            "number_required": 2,
+            "custom_skills": ["Neural Networks", "Reinforcement Learning"],
+        }
+
+        serializer = ProjectRoleSerializer(data=data)
+        assert serializer.is_valid(), f"Validation errors: {serializer.errors}"
+
+        project_role = serializer.save(project=project)
+
+        assert project_role.project == project
+        assert project_role.role is None
+        assert project_role.custom_role_name == "AI Researcher"
+        assert project_role.number_required == 2
+        assert project_role.required_skills.count() == 2
+
+        skill_names = [
+            skill.custom_skill_name for skill in project_role.required_skills.all()
+        ]
+        assert "Neural Networks" in skill_names
+        assert "Reinforcement Learning" in skill_names
+
+    def test_validate_either_role_or_custom_role_required(self, role):
+        """Test validation that either role_id or custom_role_name is required"""
+        # Test with neither field provided
+        serializer = ProjectRoleSerializer(data={"number_required": 1})
+        assert not serializer.is_valid()
+        assert "Either role or custom_role_name must be provided" in str(
+            serializer.errors
+        )
+
+        # Test with both fields provided
+        serializer = ProjectRoleSerializer(
+            data={"role_id": role.id, "custom_role_name": "Test", "number_required": 1}
+        )
+        assert not serializer.is_valid()
+        assert "Only one of role or custom_role_name should be provided" in str(
+            serializer.errors
+        )
 
 
 @pytest.mark.django_db
 class TestProjectSerializer:
     """Test ProjectSerializer"""
 
-    def test_serialize_project(self, project, project_role):
-        """Test serializing a project"""
-        serializer = ProjectSerializer(project)
-        data = serializer.data
-
-        assert data["id"] == project.id
-        assert data["title"] == project.title
-        assert data["description"] == project.description
-        assert data["status"] == project.status
-        assert data["owner"] == project.owner.id
-        assert len(data["required_roles"]) == 1
-        assert data["required_roles"][0]["id"] == project_role.id
-
-    def test_create_project_with_roles_and_skills(self, user, skill):
-        """Test creating a project with roles and skills"""
+    def test_create_project_with_mixed_roles_and_skills(self, user, role, skill):
+        """Test creating a project with both predefined and custom roles/skills"""
         data = {
-            "title": "New Project",
-            "description": "Project description",
+            "title": "Mixed Roles Project",
+            "description": "Project with mixed role types",
             "status": "pending",
             "roles": [
+                # Predefined role with predefined skill
                 {
-                    "role": "software_engineer",
+                    "role_id": role.id,
                     "number_required": 2,
                     "skill_ids": [skill.id],
                 },
-                {"role": "designer", "number_required": 1, "skill_ids": []},
+                # Custom role with predefined skill
+                {
+                    "custom_role_name": "AR/VR Developer",
+                    "number_required": 1,
+                    "skill_ids": [skill.id],
+                },
+                # Custom role with custom skills
+                {
+                    "custom_role_name": "Blockchain Engineer",
+                    "number_required": 1,
+                    "custom_skills": ["Solidity", "Smart Contracts"],
+                },
             ],
         }
 
@@ -96,24 +207,41 @@ class TestProjectSerializer:
 
         project = serializer.save(owner=user)
 
-        assert project.title == "New Project"
-        assert project.description == "Project description"
+        assert project.title == "Mixed Roles Project"
+        assert project.description == "Project with mixed role types"
         assert project.status == "pending"
         assert project.owner == user
-        assert project.required_roles.count() == 2
+        assert project.required_roles.count() == 3
 
-        # Check the first role and its skills
-        software_role = project.required_roles.filter(role="software_engineer").first()
-        assert software_role is not None
-        assert software_role.number_required == 2
-        assert software_role.required_skills.count() == 1
-        assert software_role.required_skills.first().skill.id == skill.id
+        # Check the predefined role and its skills
+        predefined_role = project.required_roles.filter(role=role).first()
+        assert predefined_role is not None
+        assert predefined_role.number_required == 2
+        assert predefined_role.required_skills.count() == 1
+        assert predefined_role.required_skills.first().skill.id == skill.id
 
-        # Check the second role
-        designer_role = project.required_roles.filter(role="designer").first()
-        assert designer_role is not None
-        assert designer_role.number_required == 1
-        assert designer_role.required_skills.count() == 0
+        # Check the custom role with predefined skill
+        ar_vr_role = project.required_roles.filter(
+            custom_role_name="AR/VR Developer"
+        ).first()
+        assert ar_vr_role is not None
+        assert ar_vr_role.number_required == 1
+        assert ar_vr_role.required_skills.count() == 1
+        assert ar_vr_role.required_skills.first().skill.id == skill.id
+
+        # Check the custom role with custom skills
+        blockchain_role = project.required_roles.filter(
+            custom_role_name="Blockchain Engineer"
+        ).first()
+        assert blockchain_role is not None
+        assert blockchain_role.number_required == 1
+        assert blockchain_role.required_skills.count() == 2
+
+        skill_names = [
+            skill.custom_skill_name for skill in blockchain_role.required_skills.all()
+        ]
+        assert "Solidity" in skill_names
+        assert "Smart Contracts" in skill_names
 
 
 @pytest.mark.django_db
@@ -130,7 +258,7 @@ class TestProjectDetailSerializer:
         assert len(data["team_members"]) == 1
         assert data["team_members"][0]["id"] == project_membership.id
         assert data["team_members"][0]["user"] == project_membership.user.id
-        assert data["team_members"][0]["role"] == project_membership.role
+        assert data["team_members"][0]["role_id"] == project_membership.role.id
         assert data["team_members"][0]["status"] == project_membership.status
 
 
@@ -146,15 +274,20 @@ class TestProjectMembershipSerializer:
         assert data["id"] == project_membership.id
         assert data["user"] == project_membership.user.id
         assert data["project"] == project_membership.project.id
-        assert data["role"] == project_membership.role
+        assert data["role_id"] == project_membership.role.id
         assert data["status"] == project_membership.status
 
-    def test_create_project_membership(self, user, project):
+    def test_create_project_membership(self, user, project, role):
         """Test creating a project membership"""
+        # First create a project role
+        project_role = ProjectRole.objects.create(
+            project=project, custom_role_name="Designer", number_required=1
+        )
+
         data = {
             "user": user.id,
             "project": project.id,
-            "role": "designer",
+            "role_id": project_role.id,
             "status": "pending",
         }
 
@@ -165,5 +298,5 @@ class TestProjectMembershipSerializer:
 
         assert membership.user == user
         assert membership.project == project
-        assert membership.role == "designer"
+        assert membership.role == project_role
         assert membership.status == "pending"

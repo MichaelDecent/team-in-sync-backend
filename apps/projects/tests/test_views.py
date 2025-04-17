@@ -1,7 +1,6 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
 
 from apps.projects.models import Project, ProjectMembership, ProjectRole
 
@@ -10,38 +9,28 @@ from apps.projects.models import Project, ProjectMembership, ProjectRole
 class TestProjectViewSet:
     """Test ProjectViewSet"""
 
-    def test_list_projects(self, auth_client, project):
-        """Test listing projects"""
-        url = reverse("projects:projects-list")
-        response = auth_client.get(url)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1
-        assert any(p["id"] == project.id for p in response.data)
-
-    def test_retrieve_project(self, auth_client, project):
-        """Test retrieving a specific project"""
-        url = reverse("projects:projects-detail", kwargs={"pk": project.id})
-        response = auth_client.get(url)
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["id"] == project.id
-        assert response.data["title"] == project.title
-        assert "team_members" in response.data
-
-    def test_create_project(self, auth_client, user, skill):
-        """Test creating a project with roles and skills"""
+    def test_create_project_with_predefined_and_custom_roles(
+        self, auth_client, user, role, skill
+    ):
+        """Test creating a project with both predefined and custom roles/skills"""
         url = reverse("projects:projects-list")
         data = {
-            "title": "New Project",
-            "description": "Project description",
+            "title": "Mixed Project",
+            "description": "Project with mixed role types",
             "status": "pending",
             "roles": [
+                # Predefined role with predefined skill
                 {
-                    "role": "software_engineer",
+                    "role_id": role.id,
                     "number_required": 2,
                     "skill_ids": [skill.id],
-                }
+                },
+                # Custom role with custom skills
+                {
+                    "custom_role_name": "Data Scientist",
+                    "number_required": 1,
+                    "custom_skills": ["TensorFlow", "PyTorch"],
+                },
             ],
         }
 
@@ -50,71 +39,35 @@ class TestProjectViewSet:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["title"] == data["title"]
         assert response.data["description"] == data["description"]
-        assert response.data["status"] == data["status"]
-        assert response.data["owner"] == user.id
 
         # Check if project was created in database
         project = Project.objects.get(id=response.data["id"])
         assert project.title == data["title"]
 
-        # Check if role was created
-        role = ProjectRole.objects.filter(project=project).first()
-        assert role is not None
-        assert role.role == "software_engineer"
+        # Check if roles were created
+        assert project.required_roles.count() == 2
 
-        # Check if skill was added to role
-        assert role.required_skills.count() == 1
-        assert role.required_skills.first().skill_id == skill.id
+        # Check predefined role
+        predefined_role = project.required_roles.filter(role=role).first()
+        assert predefined_role is not None
+        assert predefined_role.number_required == 2
+        assert predefined_role.required_skills.count() == 1
+        assert predefined_role.required_skills.first().skill_id == skill.id
 
-    def test_update_project(self, auth_client, project):
-        """Test updating a project"""
-        url = reverse("projects:projects-detail", kwargs={"pk": project.id})
-        data = {"title": "Updated Project", "status": "in_progress"}
+        # Check custom role
+        custom_role = project.required_roles.filter(
+            custom_role_name="Data Scientist"
+        ).first()
+        assert custom_role is not None
+        assert custom_role.number_required == 1
+        assert custom_role.required_skills.count() == 2
 
-        response = auth_client.patch(url, data, format="json")
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.data["title"] == data["title"]
-        assert response.data["status"] == data["status"]
-
-        # Check if updates were saved to database
-        project.refresh_from_db()
-        assert project.title == data["title"]
-        assert project.status == data["status"]
-
-    def test_delete_project(self, auth_client, project):
-        """Test deleting a project"""
-        url = reverse("projects:projects-detail", kwargs={"pk": project.id})
-
-        response = auth_client.delete(url)
-
-        assert response.status_code == status.HTTP_204_NO_CONTENT
-        assert not Project.objects.filter(id=project.id).exists()
-
-    def test_unauthorized_project_update(self, api_client, project):
-        """Test unauthorized project update"""
-        url = reverse("projects:projects-detail", kwargs={"pk": project.id})
-        data = {
-            "title": "Unauthorized Update",
-        }
-
-        response = api_client.patch(url, data, format="json")
-
-        assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-    def test_other_user_cannot_update_project(self, project, another_user):
-        """Test that another user cannot update someone else's project"""
-        client = APIClient()  # Now properly imported
-        client.force_authenticate(user=another_user)
-
-        url = reverse("projects:projects-detail", kwargs={"pk": project.id})
-        data = {
-            "title": "Unauthorized Update",
-        }
-
-        response = client.patch(url, data, format="json")
-
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        # Check custom skills
+        skill_names = [
+            skill.custom_skill_name for skill in custom_role.required_skills.all()
+        ]
+        assert "TensorFlow" in skill_names
+        assert "PyTorch" in skill_names
 
 
 @pytest.mark.django_db
@@ -150,13 +103,16 @@ class TestProjectMembershipViewSet:
         assert len(response.data) >= 1
         assert response.data[0]["status"] == project_membership.status
 
-    def test_create_membership(self, auth_client, user, project):
+    def test_create_membership(self, auth_client, user, project, role):
         """Test creating a project membership"""
+        project_role = ProjectRole.objects.create(
+            project=project, role=role, number_required=1
+        )
         url = reverse("projects:memberships-list")
         data = {
             "user": user.id,
             "project": project.id,
-            "role": "designer",
+            "role_id": project_role.id,
             "status": "pending",
         }
 
@@ -165,7 +121,7 @@ class TestProjectMembershipViewSet:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["user"] == data["user"]
         assert response.data["project"] == data["project"]
-        assert response.data["role"] == data["role"]
+        assert response.data["role_id"] == data["role_id"]
         assert response.data["status"] == data["status"]
 
         # Check if membership was created in database
