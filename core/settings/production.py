@@ -1,5 +1,5 @@
+from datetime import timedelta
 from os import getenv
-from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -13,16 +13,14 @@ DEBUG = getenv("DEBUG", "False") == "True"
 
 
 # Database configuration
-tmpPostgres = urlparse(getenv("DATABASE_URL"))
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": tmpPostgres.path.replace("/", ""),
-        "USER": tmpPostgres.username,
-        "PASSWORD": tmpPostgres.password,
-        "HOST": tmpPostgres.hostname,
-        "PORT": 5432,
+        "NAME": getenv("DB_NAME"),
+        "USER": getenv("DB_USER"),
+        "PASSWORD": getenv("DB_PASSWORD"),
+        "HOST": getenv("DB_HOST"),
+        "PORT": getenv("DB_PORT"),
     }
 }
 
