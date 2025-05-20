@@ -34,16 +34,20 @@ class ProjectRoleSkillInline(admin.TabularInline):
 class ProjectRoleAdmin(admin.ModelAdmin):
     list_display = ("project", "role", "number_required")
     list_filter = ("role", "project")
-    search_fields = ("project__title", "role")
+    search_fields = ("project__title", "role__name")
     inlines = [ProjectRoleSkillInline]
-    autocomplete_fields = ["project"]
+    autocomplete_fields = ["project", "role"]
 
 
 @admin.register(ProjectRoleSkill)
 class ProjectRoleSkillAdmin(admin.ModelAdmin):
     list_display = ("project_role", "skill")
-    list_filter = ("skill", "project_role__project")
-    search_fields = ("skill__name", "project_role__project__title")
+    list_filter = ("skill", "project_role__project", "project_role__role")
+    search_fields = (
+        "skill__name",
+        "project_role__project__title",
+        "project_role__role__name",
+    )
     autocomplete_fields = ["project_role", "skill"]
 
 

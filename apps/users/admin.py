@@ -89,10 +89,9 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 
 class SkillAdmin(admin.ModelAdmin):
-    list_display = ("name", "role")
-    list_filter = ("role",)
+    list_display = ("name",)
     search_fields = ("name",)
-    ordering = ("role", "name")
+    ordering = ("name",)
 
 
 class UserSkillAdmin(admin.ModelAdmin):
@@ -114,15 +113,11 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
 
 # Add the CustomRole to admin
 class RoleAdmin(admin.ModelAdmin):
-    list_display = ("name", "value", "is_default", "created_at")
-    list_filter = ("is_default",)
-    search_fields = ("name", "value")
+    list_display = ("name",)  # Only include fields that exist
+    search_fields = ("name",)
     ordering = ("name",)
-    readonly_fields = ("created_at",)
 
-    fieldsets = (
-        (None, {"fields": ("name", "is_default")}),
-    )
+    fieldsets = ((None, {"fields": ("name",)}),)  # Only include fields that exist
 
 
 class UserSocialAuthAdmin(admin.ModelAdmin):

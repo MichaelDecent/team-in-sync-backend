@@ -7,19 +7,10 @@ class Role(models.Model):
     """Model for storing custom roles"""
 
     name = models.CharField(_("name"), max_length=100, unique=True)
-    value = models.CharField(_("value"), max_length=100, unique=True)
-    is_default = models.BooleanField(_("is default"), default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = _("role")
         verbose_name_plural = _("roles")
-
-    def save(self, *args, **kwargs):
-        """Override save method to ensure unique value for each role"""
-        if self.name:
-            self.value = self.name.lower().replace(" ", "_")
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -109,16 +100,15 @@ class UserProfile(models.Model):
 class Skill(models.Model):
     """Model for skills that users can have"""
 
-    name = models.CharField(_("name"), max_length=100)
-    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="skills")
+    name = models.CharField(_("name"), max_length=100, unique=True)
 
     class Meta:
-        unique_together = ("name", "role")
+        # Remove the unique_together constraint
         verbose_name = _("skill")
         verbose_name_plural = _("skills")
 
     def __str__(self):
-        return f"{self.name} ({self.role.name})"
+        return self.name  # Update string representation
 
 
 class UserSkill(models.Model):

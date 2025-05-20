@@ -49,7 +49,6 @@ class UserProfileView(APIView):
         if serializer.is_valid():
             serializer.save()
 
-            # Refresh the profile instance to ensure we have latest data
             profile.refresh_from_db()
 
             updated_profile = UserProfileSerializer(profile).data
@@ -73,12 +72,8 @@ class UserSkillView(APIView):
 
     @extend_schema(responses=SkillSerializer(many=True))
     def get(self, request):
-        """Get list of all available skills, optionally filtered by role"""
+        """Get list of all available skills"""
         skills_query = UserSkill.objects.all().filter(profile=request.user.profile)
-
-        role = request.query_params.get("role")
-        if role:
-            skills_query = skills_query.filter(role=role)
 
         serializer = UserSkillSerializer(skills_query, many=True)
         return APIResponse.success(data=serializer.data)
@@ -123,13 +118,6 @@ class SkillView(APIView):
         responses=SkillSerializer(many=True),
         parameters=[
             OpenApiParameter(
-                name="role",
-                type=str,
-                location=OpenApiParameter.QUERY,
-                description="Filter skills by role",
-                required=False,
-            ),
-            OpenApiParameter(
                 name="search",
                 type=str,
                 location=OpenApiParameter.QUERY,
@@ -142,12 +130,6 @@ class SkillView(APIView):
         """Get all skills with optional filtering"""
         skills = Skill.objects.all().order_by("name")
 
-        # Filter by role if provided
-        role = request.query_params.get("role")
-        if role:
-            skills = skills.filter(role=role)
-
-        # Search by name if provided
         search = request.query_params.get("search")
         if search:
             skills = skills.filter(name__icontains=search)

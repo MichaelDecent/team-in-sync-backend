@@ -9,96 +9,67 @@ class ProjectRoleSkillSerializer(serializers.ModelSerializer):
     """Serializer for project role skill"""
 
     skill_name = serializers.CharField(source="skill.name", read_only=True)
-    skill = serializers.PrimaryKeyRelatedField(
-        queryset=Skill.objects.all(), required=False, allow_null=True, write_only=True
-    )
-    custom_skill_name = serializers.CharField(required=False, allow_null=True)
+    skill_input = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = ProjectRoleSkill
-        fields = ["id", "skill", "skill_name", "custom_skill_name"]
+        fields = ["id", "skill_name", "skill_input"]
 
-    def validate(self, data):
-        """Ensure either skill or custom_skill_name is provided, but not both."""
-        skill = data.get("skill")
-        custom_skill_name = data.get("custom_skill_name")
-
-        if skill is None and not custom_skill_name:
-            raise serializers.ValidationError(
-                "Either skill or custom_skill_name must be provided."
-            )
-        if skill and custom_skill_name:
-            raise serializers.ValidationError(
-                "Only one of skill or custom_skill_name should be provided."
-            )
-
-        return data
+    def create(self, validated_data):
+        skill_name = validated_data.pop("skill_input", None)
+        if skill_name and not validated_data.get("skill"):
+            skill, _ = Skill.objects.get_or_create(name=skill_name)
+            validated_data["skill"] = skill
+        return super().create(validated_data)
 
 
 class ProjectRoleSerializer(serializers.ModelSerializer):
     """Serializer for project role with its required skills"""
 
     required_skills = ProjectRoleSkillSerializer(many=True, read_only=True)
-    skill_ids = serializers.ListField(
-        child=serializers.IntegerField(), write_only=True, required=False, default=list
-    )
-    custom_skills = serializers.ListField(
+    skills_input = serializers.ListField(
         child=serializers.CharField(), write_only=True, required=False, default=list
     )
-    role_id = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(),
-        required=False,
-        allow_null=True,
-        write_only=True,
-        source="role",
-    )
-    custom_role_name = serializers.CharField(required=False, allow_null=True)
-    role_name = serializers.CharField(source="get_role_display", read_only=True)
+    role_name = serializers.CharField(source="role.name", read_only=True)
+    role_input = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = ProjectRole
         fields = [
             "id",
-            "role_id",
-            "custom_role_name",
+            "role_input",
             "role_name",
             "number_required",
             "required_skills",
-            "skill_ids",
-            "custom_skills",
+            "skills_input",
         ]
         read_only_fields = ["id"]
 
     def validate(self, data):
-        """Ensure either role or custom_role_name is provided, but not both."""
-        role = data.get("role")
-        custom_role_name = data.get("custom_role_name")
-
-        if role is None and not custom_role_name:
+        """Only allow one of role or role_input"""
+        if "role" in data and "role_input" in data:
             raise serializers.ValidationError(
-                "Either role or custom_role_name must be provided."
+                "Only provide one of 'role' or 'role_input', not both"
             )
-        if role and custom_role_name:
-            raise serializers.ValidationError(
-                "Only one of role or custom_role_name should be provided."
-            )
-
+        if not data.get("role_input"):
+            raise serializers.ValidationError("role_input is required")
         return data
 
     def create(self, validated_data):
-        skill_ids = validated_data.pop("skill_ids", [])
-        custom_skills = validated_data.pop("custom_skills", [])
+        skill_names = validated_data.pop("skills_input", [])
+        role_name = validated_data.pop("role_input", None)
+
+        # Handle role by name
+        if role_name:
+            role, _ = Role.objects.get_or_create(name=role_name)
+            validated_data["role"] = role
+
         project_role = ProjectRole.objects.create(**validated_data)
 
-        for skill_id in skill_ids:
-            ProjectRoleSkill.objects.create(
-                project_role=project_role, skill_id=skill_id
-            )
-
-        for custom_skill in custom_skills:
-            ProjectRoleSkill.objects.create(
-                project_role=project_role, custom_skill_name=custom_skill
-            )
+        # Add skills by name
+        for skill_name in skill_names:
+            skill, _ = Skill.objects.get_or_create(name=skill_name)
+            ProjectRoleSkill.objects.create(project_role=project_role, skill=skill)
 
         return project_role
 
@@ -131,19 +102,20 @@ class ProjectSerializer(serializers.ModelSerializer):
         project = Project.objects.create(**validated_data)
 
         for role_data in roles_data:
-            skill_ids = role_data.pop("skill_ids", [])
-            custom_skills = role_data.pop("custom_skills", [])
+            skill_names = role_data.pop("skills_input", [])
+            role_name = role_data.pop("role_input", None)
+
+            # Process role by name
+            if role_name:
+                role, _ = Role.objects.get_or_create(name=role_name)
+                role_data["role"] = role
+
             project_role = ProjectRole.objects.create(project=project, **role_data)
 
-            for skill_id in skill_ids:
-                ProjectRoleSkill.objects.create(
-                    project_role=project_role, skill_id=skill_id
-                )
-
-            for custom_skill in custom_skills:
-                ProjectRoleSkill.objects.create(
-                    project_role=project_role, custom_skill_name=custom_skill
-                )
+            # Add skills by name
+            for skill_name in skill_names:
+                skill, _ = Skill.objects.get_or_create(name=skill_name)
+                ProjectRoleSkill.objects.create(project_role=project_role, skill=skill)
 
         return project
 

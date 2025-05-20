@@ -46,32 +46,20 @@ class ProjectRole(models.Model):
     role = models.ForeignKey(
         Role, on_delete=models.CASCADE, related_name="roles", null=True, blank=True
     )
-    custom_role_name = models.CharField(max_length=100, null=True, blank=True)
     number_required = models.PositiveIntegerField(default=1)
 
-    def __str__(self):
-        role_name = self.get_role_display
-        return f"{self.project.title} - {role_name}"
-
     class Meta:
-        # Change unique constraint to accommodate either role or custom_role_name
         constraints = [
             models.UniqueConstraint(
                 fields=["project", "role"],
-                condition=models.Q(role__isnull=False),
-                name="unique_project_predefined_role",
-            ),
-            models.UniqueConstraint(
-                fields=["project", "custom_role_name"],
-                condition=models.Q(custom_role_name__isnull=False),
-                name="unique_project_custom_role",
+                name="unique_project_role",
             ),
         ]
 
-    @property
-    def get_role_display(self):
-        """Return the display name of the role (predefined or custom)"""
-        return self.role.name if self.role else self.custom_role_name
+    def __str__(self):
+        if hasattr(self, "role") and self.role:
+            return f"{self.project.title} - {self.role.name}"
+        return f"{self.project.title} - Unknown Role"
 
 
 class ProjectRoleSkill(models.Model):
@@ -87,24 +75,15 @@ class ProjectRoleSkill(models.Model):
         null=True,
         blank=True,
     )
-    custom_skill_name = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
-        skill_name = self.skill.name if self.skill else self.custom_skill_name
-        return f"{self.project_role} - {skill_name}"
+        return f"{self.project_role} - {self.skill.name}"
 
     class Meta:
-        # Change unique constraint to accommodate either skill or custom_skill_name
         constraints = [
             models.UniqueConstraint(
                 fields=["project_role", "skill"],
-                condition=models.Q(skill__isnull=False),
-                name="unique_project_role_predefined_skill",
-            ),
-            models.UniqueConstraint(
-                fields=["project_role", "custom_skill_name"],
-                condition=models.Q(custom_skill_name__isnull=False),
-                name="unique_project_role_custom_skill",
+                name="unique_project_role_skill",
             ),
         ]
 
@@ -128,7 +107,8 @@ class ProjectMembership(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     def __str__(self):
-        return f"{self.user.email} - {self.project.title} - {self.role.get_role_display}"
+        role_name = self.role.role.name if self.role and self.role.role else "Unknown Role"
+        return f"{self.user.email} - {self.project.title} - {role_name}"
 
     class Meta:
         unique_together = ("user", "project", "role")

@@ -109,9 +109,7 @@ class TestUserProfileModel:
             experience_level=ExperienceLevelChoices.SENIOR,
             bio="Experienced software developer",
         )
-
-        # Need a skill for profile to be complete
-        skill = Skill.objects.create(name="Python", role=software_engineer_role)
+        skill = Skill.objects.create(name="Python")
         UserSkill.objects.create(profile=profile, skill=skill)
 
         assert profile.is_complete() is True
@@ -128,7 +126,7 @@ class TestUserProfileModel:
         )
 
         # Add a skill
-        skill = Skill.objects.create(name="Python", role=software_engineer_role)
+        skill = Skill.objects.create(name="Python")
         UserSkill.objects.create(profile=profile, skill=skill)
 
         assert profile.is_complete() is False
@@ -155,13 +153,8 @@ class TestRoleModel:
 
     def test_create_role(self):
         """Test creating a role."""
-        role = Role.objects.create(
-            name="Data Scientist", value="data_scientist", is_default=False
-        )
-
+        role = Role.objects.create(name="Data Scientist")
         assert role.name == "Data Scientist"
-        assert role.value == "data_scientist"
-        assert role.is_default is False
         assert str(role) == "Data Scientist"
 
 
@@ -169,40 +162,37 @@ class TestRoleModel:
 class TestSkillModel:
     """Test the Skill model."""
 
-    def test_create_skill(self, software_engineer_role):
+    def test_create_skill(self):
         """Test creating a skill."""
-        skill = Skill.objects.create(name="Python", role=software_engineer_role)
-
+        skill = Skill.objects.create(name="Python")
         assert skill.name == "Python"
-        assert skill.role == software_engineer_role
-        assert str(skill) == "Python (Software Engineer)"
+        assert str(skill) == "Python"
 
     def test_skill_uniqueness(self, software_engineer_role):
         """Test that skill names are unique per role."""
-        Skill.objects.create(name="Django", role=software_engineer_role)
+        Skill.objects.create(name="Django")
 
         with pytest.raises(IntegrityError):
-            Skill.objects.create(name="Django", role=software_engineer_role)
+            Skill.objects.create(name="Django")
 
-    def test_skill_different_roles(self, software_engineer_role, designer_role):
-        """Test that the same skill name can exist for different roles."""
-        skill1 = Skill.objects.create(name="Wireframing", role=designer_role)
-        skill2 = Skill.objects.create(name="Wireframing", role=software_engineer_role)
+    def test_skill_name_case_insensitive(self):
+        """Test that skill names are case-insensitive in practice."""
+        skill1 = Skill.objects.create(name="React")
 
-        assert skill1.name == skill2.name
-        assert skill1.role != skill2.role
-        assert str(skill1) == "Wireframing (Designer)"
-        assert str(skill2) == "Wireframing (Software Engineer)"
+        skill2 = Skill.objects.create(name="react")
+
+        assert skill1.name.lower() == skill2.name.lower()
+        assert skill1.id != skill2.id
 
 
 @pytest.mark.django_db
 class TestUserSkillModel:
     """Test the UserSkill model."""
 
-    def test_add_skill_to_profile(self, user, software_engineer_role):
+    def test_add_skill_to_profile(self, user):
         """Test adding a skill to a user profile."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="JavaScript", role=software_engineer_role)
+        skill = Skill.objects.create(name="JavaScript")
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
 
@@ -210,11 +200,11 @@ class TestUserSkillModel:
         assert user_skill.skill == skill
         assert str(user_skill) == f"{user.email} - JavaScript"
 
-    def test_skills_relationship(self, user, software_engineer_role):
+    def test_skills_relationship(self, user):
         """Test the relationship between user profiles and skills."""
         profile = UserProfile.objects.create(user=user)
-        skill1 = Skill.objects.create(name="Python", role=software_engineer_role)
-        skill2 = Skill.objects.create(name="JavaScript", role=software_engineer_role)
+        skill1 = Skill.objects.create(name="Python")
+        skill2 = Skill.objects.create(name="JavaScript")
 
         UserSkill.objects.create(profile=profile, skill=skill1)
         UserSkill.objects.create(profile=profile, skill=skill2)
@@ -226,30 +216,30 @@ class TestUserSkillModel:
             "JavaScript",
         }
 
-    def test_unique_user_skill_constraint(self, user, software_engineer_role):
+    def test_unique_user_skill_constraint(self, user):
         """Test that a user can't have the same skill twice."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="React", role=software_engineer_role)
+        skill = Skill.objects.create(name="React")
 
         UserSkill.objects.create(profile=profile, skill=skill)
 
         with pytest.raises(IntegrityError):
             UserSkill.objects.create(profile=profile, skill=skill)
 
-    def test_delete_skill_cascades(self, user, software_engineer_role):
+    def test_delete_skill_cascades(self, user):
         """Test that deleting a skill cascades to UserSkill records."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="TypeScript", role=software_engineer_role)
+        skill = Skill.objects.create(name="TypeScript")
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
         skill.delete()
 
         assert UserSkill.objects.filter(id=user_skill.id).count() == 0
 
-    def test_delete_profile_cascades(self, user, software_engineer_role):
+    def test_delete_profile_cascades(self, user):
         """Test that deleting a profile cascades to UserSkill records."""
         profile = UserProfile.objects.create(user=user)
-        skill = Skill.objects.create(name="Vue", role=software_engineer_role)
+        skill = Skill.objects.create(name="Vue")
 
         user_skill = UserSkill.objects.create(profile=profile, skill=skill)
         profile.delete()
