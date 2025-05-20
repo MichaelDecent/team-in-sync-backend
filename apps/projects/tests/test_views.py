@@ -9,27 +9,18 @@ from apps.projects.models import Project, ProjectMembership, ProjectRole
 class TestProjectViewSet:
     """Test ProjectViewSet"""
 
-    def test_create_project_with_predefined_and_custom_roles(
-        self, auth_client, user, role, skill
-    ):
-        """Test creating a project with both predefined and custom roles/skills"""
+    def test_create_project_with_roles(self, auth_client, user, role, skill):
+        """Test creating a project with both roles/skills"""
         url = reverse("projects:projects-list")
         data = {
             "title": "Mixed Project",
             "description": "Project with mixed role types",
             "status": "pending",
             "roles": [
-                # Predefined role with predefined skill
                 {
-                    "role_id": role.id,
-                    "number_required": 2,
-                    "skill_ids": [skill.id],
-                },
-                # Custom role with custom skills
-                {
-                    "custom_role_name": "Data Scientist",
+                    "role_input": "Data Scientist",
                     "number_required": 1,
-                    "custom_skills": ["TensorFlow", "PyTorch"],
+                    "skills_input": ["TensorFlow", "PyTorch"],
                 },
             ],
         }
@@ -45,26 +36,17 @@ class TestProjectViewSet:
         assert project.title == data["title"]
 
         # Check if roles were created
-        assert project.required_roles.count() == 2
-
-        # Check predefined role
-        predefined_role = project.required_roles.filter(role=role).first()
-        assert predefined_role is not None
-        assert predefined_role.number_required == 2
-        assert predefined_role.required_skills.count() == 1
-        assert predefined_role.required_skills.first().skill_id == skill.id
+        assert project.required_roles.count() == 1
 
         # Check custom role
-        custom_role = project.required_roles.filter(
-            custom_role_name="Data Scientist"
-        ).first()
-        assert custom_role is not None
-        assert custom_role.number_required == 1
-        assert custom_role.required_skills.count() == 2
+        filtered_role = project.required_roles.filter(role__name="Data Scientist").first()
+        assert filtered_role is not None
+        assert filtered_role.number_required == 1
+        assert filtered_role.required_skills.count() == 2
 
         # Check custom skills
         skill_names = [
-            skill.custom_skill_name for skill in custom_role.required_skills.all()
+            skill.skill.name for skill in filtered_role.required_skills.all()
         ]
         assert "TensorFlow" in skill_names
         assert "PyTorch" in skill_names

@@ -32,7 +32,7 @@ class TestUserProfileView:
         url = reverse("users:user_profile")
         data = {
             "full_name": "John Doe",
-            "role": designer_role.id,  # Use the role ID instead of string
+            "role_name": designer_role.name,
             "bio": "I am a designer",
         }
 
@@ -82,19 +82,6 @@ class TestUserProfileView:
         profile.refresh_from_db()
         assert "profile_picture_url" in response.data["data"]
 
-    def test_update_profile_invalid_data(self, auth_client):
-        """Test updating profile with invalid data."""
-        url = reverse("users:user_profile")
-        data = {
-            "role": "invalid_role",
-        }
-
-        response = auth_client.patch(url, data, format="multipart")
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert response.data["success"] is False
-        assert "role" in response.data["errors"]
-
 
 @pytest.mark.django_db
 class TestUserSkillView:
@@ -124,7 +111,7 @@ class TestUserSkillView:
         print(profile.role)
         url = reverse("users:user_skills")
         data = {"skill": skill1.id}
-        
+
         response = auth_client.post(url, data, format="json")
 
         print(response.data)
@@ -208,8 +195,8 @@ class TestRoleView:
     def test_get_all_roles(self, auth_client):
         """Test getting all available roles."""
         # Create a few custom roles
-        Role.objects.create(name="Test Role 1", value="test_role_1")
-        Role.objects.create(name="Test Role 2", value="test_role_2")
+        Role.objects.create(name="Test Role 1")
+        Role.objects.create(name="Test Role 2")
 
         url = reverse("users:roles")
         response = auth_client.get(url)

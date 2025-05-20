@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
@@ -16,8 +17,18 @@ from .serializers import (
 
 
 class ProjectFilter(filters.FilterSet):
-    role = filters.CharFilter(field_name="required_roles__role")
-    skill = filters.NumberFilter(field_name="required_roles__required_skills__skill")
+    # filter by Role.name
+    role = filters.CharFilter(
+        field_name="required_roles__role__name",
+        lookup_expr="istartswith",
+        label="role name",
+    )
+    # filter by Skill.name
+    skill = filters.CharFilter(
+        field_name="required_roles__required_skills__skill__name",
+        lookup_expr="istartswith",
+        label="skill name",
+    )
     member_of = filters.BooleanFilter(method="filter_member_of")
 
     class Meta:
@@ -27,7 +38,7 @@ class ProjectFilter(filters.FilterSet):
     def filter_member_of(self, queryset, name, value):
         user = self.request.user
         if value:
-            return queryset.filter(team_members=user)
+            return queryset.filter(Q(team_members=user) | Q(owner=user)).distinct()
         return queryset
 
 
@@ -63,7 +74,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated, IsProjectOwnerOrReadOnly]
     filter_backends = [filters.DjangoFilterBackend, SearchFilter]
     filterset_class = ProjectFilter
-    search_fields = ["title", "description", "required_roles__role"]
+    search_fields = [
+        "title",
+        "description",
+        "required_roles__role__name",
+        "required_roles__required_skills__skill__name",
+    ]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
@@ -86,8 +102,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def my_projects(self, request):
-        """List projects where the current user is a member"""
-        queryset = Project.objects.filter(team_members=request.user)
+        """List projects where the current user is a member or an owner"""
+        queryset = Project.objects.filter(
+            Q(team_members=request.user) | Q(owner=request.user)
+        ).distinct()
 
         queryset = self.filter_queryset(queryset)
 

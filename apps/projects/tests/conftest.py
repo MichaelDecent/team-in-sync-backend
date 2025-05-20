@@ -62,12 +62,9 @@ def role():
 
 
 @pytest.fixture
-def skill(role):
+def skill():
     """Return a skill for testing"""
-    skill, _ = Skill.objects.get_or_create(
-        name="Python",
-        defaults={"role": role},
-    )
+    skill, _ = Skill.objects.get_or_create(name="Python")
     return skill
 
 
@@ -82,21 +79,4 @@ def project_membership(project, another_user, project_role):
     """Return a project membership"""
     return ProjectMembership.objects.create(
         project=project, user=another_user, role=project_role, status="pending"
-    )
-
-
-@pytest.fixture
-def custom_role_project(project):
-    """Return a project with a custom role"""
-    project_role = ProjectRole.objects.create(
-        project=project, custom_role_name="Machine Learning Engineer", number_required=1
-    )
-    return project, project_role
-
-
-@pytest.fixture
-def custom_skill_project_role_skill(project_role):
-    """Return a project role skill with custom skill name"""
-    return ProjectRoleSkill.objects.create(
-        project_role=project_role, custom_skill_name="Natural Language Processing"
     )
