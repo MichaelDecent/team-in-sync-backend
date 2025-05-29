@@ -69,8 +69,7 @@ class RegisterView(generics.CreateAPIView):
                 data={"user": UserSerializer(user).data},
                 message="Registration successful. Please check your email to verify your account.",
             )
-        except Exception as e:
-            print(f"Error: {e}")
+        except Exception:
             if "user" in locals():
                 user.delete()
             return APIResponse.bad_request(
