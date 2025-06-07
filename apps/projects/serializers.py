@@ -126,11 +126,26 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
     role_id = serializers.PrimaryKeyRelatedField(
         source="role", queryset=ProjectRole.objects.all()
     )
+    profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectMembership
-        fields = ["id", "user", "project", "role_id", "status", "joined_at"]
-        read_only_fields = ["id", "joined_at"]
+        fields = [
+            "id",
+            "user",
+            "project",
+            "profile_picture_url",
+            "role_id",
+            "status",
+            "joined_at",
+        ]
+        read_only_fields = ["id", "joined_at", "profile_picture_url", "status"]
+
+    def get_profile_picture_url(self, obj):
+        """Get the URL of the profile picture if it exists"""
+        if obj.user.profile.profile_picture:
+            return obj.user.profile.profile_picture.url
+        return None
 
 
 class ProjectDetailSerializer(ProjectSerializer):
