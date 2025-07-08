@@ -142,9 +142,9 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "joined_at", "profile_picture_url", "status"]
 
     def get_profile_picture_url(self, obj):
-        """Get the URL of the profile picture if it exists"""
-        if obj.user.profile.profile_picture:
-            return obj.user.profile.profile_picture.url
+        profile = getattr(obj.user, "profile", None)
+        if profile and profile.profile_picture:
+            return profile.profile_picture.url
         return None
 
 
