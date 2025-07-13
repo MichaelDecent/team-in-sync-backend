@@ -7,23 +7,24 @@ from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 
+from core.utils.api_response import APIResponse
+
 from ..notifications.services import NotificationService
-from .models import Project, ProjectMembership
+from .models import Project, ProjectMembership, FavoriteProject
 from .serializers import (
     ProjectDetailSerializer,
     ProjectMembershipSerializer,
     ProjectSerializer,
+    FavoriteProjectSerializer,
 )
 
 
 class ProjectFilter(filters.FilterSet):
-    # filter by Role.name
     role = filters.CharFilter(
         field_name="required_roles__role__name",
         lookup_expr="istartswith",
         label="role name",
     )
-    # filter by Skill.name
     skill = filters.CharFilter(
         field_name="required_roles__required_skills__skill__name",
         lookup_expr="istartswith",
@@ -60,6 +61,10 @@ class IsProjectOwnerOrReadOnly(permissions.BasePermission):
     create=extend_schema(description="Create a project with roles and skills"),
     my_projects=extend_schema(
         description="List projects where the current user is a member"
+    ),
+    add_to_favorites=extend_schema(description="Add a project to user's favorites"),
+    remove_from_favorites=extend_schema(
+        description="Remove a project from user's favorites"
     ),
 )
 @extend_schema(tags=["Projects"])
@@ -111,6 +116,79 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def add_to_favorites(self, request, pk=None):
+        """Add a project to user's favorites"""
+        project = self.get_object()
+        user = request.user
+
+        # Check if already favorited
+        if FavoriteProject.objects.filter(user=user, project=project).exists():
+            return APIResponse.error(message="Project is already in your favorites")
+
+        # Add to favorites
+        FavoriteProject.objects.create(user=user, project=project)
+        return APIResponse.success(message="Project added to favorites")
+
+    @action(detail=True, methods=["delete"])
+    def remove_from_favorites(self, request, pk=None):
+        """Remove a project from user's favorites"""
+        project = self.get_object()
+        user = request.user
+
+        try:
+            favorite = FavoriteProject.objects.get(user=user, project=project)
+            favorite.delete()
+            return APIResponse.success(message="Project removed from favorites")
+        except FavoriteProject.DoesNotExist:
+            return APIResponse.error(message="Project is not in your favorites")
+
+
+@extend_schema_view(
+    list=extend_schema(description="List user's favorite projects"),
+    create=extend_schema(description="Add a project to favorites"),
+    destroy=extend_schema(description="Remove a project from favorites"),
+)
+@extend_schema(tags=["Favorite Projects"])
+class FavoriteProjectViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing user favorite projects"""
+
+    serializer_class = FavoriteProjectSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ["get", "post", "delete"]
+
+    def get_queryset(self):
+        """Filter to only show current user's favorites"""
+        return FavoriteProject.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        """Add a project to favorites"""
+        project_id = request.data.get("project")
+        if not project_id:
+            return APIResponse.error(message="Project ID is required")
+
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            return APIResponse.error(message="Project not found")
+
+        # Check if already favorited
+        if FavoriteProject.objects.filter(user=request.user, project=project).exists():
+            return APIResponse.error(message="Project is already in your favorites")
+
+        # Add to favorites
+        favorite = FavoriteProject.objects.create(user=request.user, project=project)
+        serializer = self.get_serializer(favorite)
+        return APIResponse.success(
+            data=serializer.data, message="Project added to favorites"
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        """Remove a project from favorites"""
+        favorite = self.get_object()
+        favorite.delete()
+        return APIResponse.success(message="Project removed from favorites")
 
 
 @extend_schema(tags=["Projects Memberships"])

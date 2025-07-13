@@ -1,4 +1,4 @@
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 
@@ -13,45 +13,53 @@ from .serializers import NotificationSerializer
         description="List all notifications for the current user with optional filtering",
         parameters=[
             OpenApiParameter(
-                name='type',
-                description='Filter by notification type',
+                name="type",
+                description="Filter by notification type",
                 required=False,
                 type=str,
-                enum=[choice[0] for choice in NotificationType.choices]
+                enum=[choice[0] for choice in NotificationType.choices],
             ),
             OpenApiParameter(
-                name='read',
-                description='Filter by read status',
+                name="read",
+                description="Filter by read status",
                 required=False,
-                type=bool
+                type=bool,
             ),
-        ]
+        ],
     ),
     mark_all_read=extend_schema(description="Mark all notifications as read"),
+    destroy=extend_schema(description="Delete a specific notification"),
 )
 @extend_schema(tags=["Notifications"])
-class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
-    """ViewSet for viewing notifications"""
+class NotificationViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing notifications"""
 
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ["get", "delete"]  # Only allow GET and DELETE operations
 
     def get_queryset(self):
         """Filter notifications to only show the current user's"""
         queryset = Notification.objects.filter(recipient=self.request.user)
-        
-        # Filter by type if provided
-        notification_type = self.request.query_params.get('type', None)
-        if notification_type and notification_type in [choice[0] for choice in NotificationType.choices]:
+
+        notification_type = self.request.query_params.get("type", None)
+        if notification_type and notification_type in [
+            choice[0] for choice in NotificationType.choices
+        ]:
             queryset = queryset.filter(type=notification_type)
-        
-        # Filter by read status if provided
-        read_status = self.request.query_params.get('read', None)
+
+        read_status = self.request.query_params.get("read", None)
         if read_status is not None:
-            read_bool = read_status.lower() in ['true', '1', 'yes']
+            read_bool = read_status.lower() in ["true", "1", "yes"]
             queryset = queryset.filter(read=read_bool)
-        
+
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        """Delete a notification"""
+        notification = self.get_object()
+        notification.delete()
+        return APIResponse.success(message="Notification deleted successfully")
 
     @action(detail=True, methods=["patch"])
     def mark_read(self, request, pk=None):

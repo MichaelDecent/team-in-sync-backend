@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Project, ProjectMembership, ProjectRole, ProjectRoleSkill
+from .models import (
+    Project,
+    ProjectMembership,
+    ProjectRole,
+    ProjectRoleSkill,
+    FavoriteProject,
+)
 
 
 class ProjectRoleInline(admin.TabularInline):
@@ -57,4 +63,13 @@ class ProjectMembershipAdmin(admin.ModelAdmin):
     list_filter = ("status", "role", "joined_at")
     search_fields = ("user__email", "project__title")
     date_hierarchy = "joined_at"
+    autocomplete_fields = ["user", "project"]
+
+
+@admin.register(FavoriteProject)
+class FavoriteProjectAdmin(admin.ModelAdmin):
+    list_display = ("user", "project", "created_at")
+    list_filter = ("created_at", "project__status")
+    search_fields = ("user__email", "project__title")
+    date_hierarchy = "created_at"
     autocomplete_fields = ["user", "project"]

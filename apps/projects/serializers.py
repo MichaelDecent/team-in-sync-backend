@@ -2,7 +2,35 @@ from rest_framework import serializers
 
 from apps.users.models.profile_models import Role, Skill
 
-from .models import Project, ProjectMembership, ProjectRole, ProjectRoleSkill
+from .models import (
+    Project,
+    ProjectMembership,
+    ProjectRole,
+    ProjectRoleSkill,
+    FavoriteProject,
+)
+
+
+class FavoriteProjectSerializer(serializers.ModelSerializer):
+    """Serializer for favorite projects"""
+
+    project_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FavoriteProject
+        fields = ["id", "project", "project_details", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def get_project_details(self, obj):
+        """Get basic project information"""
+        return {
+            "id": obj.project.id,
+            "title": obj.project.title,
+            "description": obj.project.description,
+            "status": obj.project.status,
+            "owner": obj.project.owner.email,
+            "created_at": obj.project.created_at,
+        }
 
 
 class ProjectRoleSkillSerializer(serializers.ModelSerializer):
@@ -81,6 +109,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     roles = serializers.ListField(
         child=ProjectRoleSerializer(), write_only=True, required=False
     )
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -94,8 +123,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             "owner",
             "required_roles",
             "roles",
+            "is_favorited",
         ]
-        read_only_fields = ["id", "created_at", "updated_at", "owner"]
+        read_only_fields = ["id", "created_at", "updated_at", "owner", "is_favorited"]
+
+    def get_is_favorited(self, obj):
+        """Check if the current user has favorited this project"""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return obj.favorited_by.filter(user=request.user).exists()
+        return False
 
     def create(self, validated_data):
         roles_data = validated_data.pop("roles", [])

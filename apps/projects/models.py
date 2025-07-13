@@ -37,6 +37,25 @@ class Project(models.Model):
         return self.title
 
 
+class FavoriteProject(models.Model):
+    """Model for tracking user favorite projects"""
+
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="favorite_projects"
+    )
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name="favorited_by"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "project")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.project.title}"
+
+
 class ProjectRole(models.Model):
     """Model for defining roles needed for a project"""
 
@@ -107,7 +126,9 @@ class ProjectMembership(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
 
     def __str__(self):
-        role_name = self.role.role.name if self.role and self.role.role else "Unknown Role"
+        role_name = (
+            self.role.role.name if self.role and self.role.role else "Unknown Role"
+        )
         return f"{self.user.email} - {self.project.title} - {role_name}"
 
     class Meta:
