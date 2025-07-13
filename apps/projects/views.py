@@ -88,6 +88,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         "required_roles__role__name",
         "required_roles__required_skills__skill__name",
     ]
+    http_method_names = ["get", "post", "patch", "delete"]
 
     def get_serializer_class(self):
         if self.action in ["retrieve", "list"]:

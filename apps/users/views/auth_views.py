@@ -166,6 +166,8 @@ class UserView(generics.RetrieveUpdateAPIView):
     View for retrieving and updating user
     """
 
+    http_method_names = ["get", "put"]
+
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -181,6 +183,7 @@ class ChangePasswordView(generics.UpdateAPIView):
 
     serializer_class = ChangePasswordSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ["put"]
 
     def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
