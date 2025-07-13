@@ -49,6 +49,25 @@ class TestUserProfileView:
         assert profile.role.id == designer_role.id
         assert profile.bio == "I am a designer"
 
+    def test_update_profile_without_role_name(self, auth_client, profile):
+        """Test updating profile without providing role_name."""
+        url = reverse("users:user_profile")
+        data = {
+            "bio": "Updated bio without role_name",
+        }
+
+        response = auth_client.patch(url, data, format="multipart")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert "Profile updated successfully" in response.data["message"]
+
+        # Verify profile was updated
+        profile.refresh_from_db()
+        assert profile.bio == "Updated bio without role_name"
+        # Role should remain unchanged
+        assert profile.role is not None
+
     @pytest.mark.skipif(reason="Skipping image upload tests in CI environment")
     def test_update_profile_with_image(
         self, mock_cloudinary_upload, auth_client, profile, tmpdir

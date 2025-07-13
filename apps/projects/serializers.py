@@ -88,14 +88,12 @@ class ProjectRoleSerializer(serializers.ModelSerializer):
         skill_names = validated_data.pop("skills_input", [])
         role_name = validated_data.pop("role_input", None)
 
-        # Handle role by name
         if role_name:
             role, _ = Role.objects.get_or_create(name=role_name)
             validated_data["role"] = role
 
         project_role = ProjectRole.objects.create(**validated_data)
 
-        # Add skills by name
         for skill_name in skill_names:
             skill, _ = Skill.objects.get_or_create(name=skill_name)
             ProjectRoleSkill.objects.create(project_role=project_role, skill=skill)
@@ -220,7 +218,6 @@ class ProjectMembershipCreateSerializer(serializers.ModelSerializer):
         project = data["project"]
         role = data["role"]
 
-        # Check if user is already a member of this project with this role
         if ProjectMembership.objects.filter(
             user=user, project=project, role=role
         ).exists():
@@ -228,13 +225,11 @@ class ProjectMembershipCreateSerializer(serializers.ModelSerializer):
                 "You have already applied for this role in this project."
             )
 
-        # Check if the role belongs to the project
         if role.project != project:
             raise serializers.ValidationError(
                 "The specified role does not belong to this project."
             )
 
-        # Check if user is the project owner
         if project.owner == user:
             raise serializers.ValidationError(
                 "Project owners cannot join their own projects as members."
@@ -265,11 +260,9 @@ class ProjectMembershipStatusUpdateSerializer(serializers.ModelSerializer):
         """Validate the status change"""
         membership = self.instance
 
-        # Check if the membership is already in the requested status
         if membership.status == value:
             raise serializers.ValidationError(f"Membership is already {value}.")
 
-        # Only allow changing from 'pending' to 'approved' or 'rejected'
         if membership.status != "pending":
             raise serializers.ValidationError(
                 f"Cannot change status from '{membership.status}' to '{value}'."
@@ -282,7 +275,6 @@ class ProjectMembershipStatusUpdateSerializer(serializers.ModelSerializer):
         membership = self.instance
         user = self.context["request"].user
 
-        # Only project owners can update membership status
         if membership.project.owner != user:
             raise serializers.ValidationError(
                 "Only project owners can update membership status."

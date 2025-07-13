@@ -104,13 +104,8 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        """Validate that either role or role_name is provided"""
+        """Validate role_name if provided"""
         role_name = data.get("role_name")
-
-        if not isinstance(role_name, str):
-            raise serializers.ValidationError(
-                {"role_name": "Role name must be a string."}
-            )
 
         if role_name:
             try:
