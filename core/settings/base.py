@@ -184,6 +184,7 @@ CLOUDINARY_STORAGE = {
     "CLOUD_NAME": getenv("CLOUDINARY_CLOUD_NAME"),
     "API_KEY": getenv("CLOUDINARY_API_KEY"),
     "API_SECRET": getenv("CLOUDINARY_API_SECRET"),
+    "SECURE": True,
 }
 
 # Configure default file storage

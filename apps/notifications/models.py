@@ -24,7 +24,6 @@ class Notification(models.Model):
     read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # Optional reference fields
     related_project = models.ForeignKey(
         "projects.Project",
         on_delete=models.SET_NULL,
