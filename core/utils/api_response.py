@@ -12,6 +12,20 @@ class APIResponse:
         )
 
     @staticmethod
+    def created(data=None, message="Created", status_code=status.HTTP_201_CREATED):
+        return Response(
+            {"success": True, "message": message, "data": data, "errors": None},
+            status=status_code,
+        )
+
+    @staticmethod
+    def no_content(message="No Content", status_code=status.HTTP_204_NO_CONTENT):
+        return Response(
+            {"success": True, "message": message, "data": None, "errors": None},
+            status=status_code,
+        )
+
+    @staticmethod
     def error(message="Error", errors=None, status_code=status.HTTP_400_BAD_REQUEST):
         raise APIError(message=message, status_code=status_code)
 

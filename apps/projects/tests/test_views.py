@@ -55,60 +55,91 @@ class TestProjectViewSet:
 
 
 @pytest.mark.django_db
-class TestProjectMembershipViewSet:
-    """Test ProjectMembershipViewSet"""
+class TestProjectMembershipViews:
+    """Test ProjectMembership APIViews"""
 
     def test_list_memberships(self, auth_client, project_membership):
         """Test listing project memberships"""
-        url = reverse("projects:memberships-list")
+        url = reverse("projects:membership-list")
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1
-        assert any(m["id"] == project_membership.id for m in response.data)
+        assert response.data["success"] is True
+        assert len(response.data["data"]) >= 1
+        assert any(m["id"] == project_membership.id for m in response.data["data"])
 
     def test_filter_by_project(self, auth_client, project, project_membership):
         """Test filtering memberships by project"""
-        url = f"{reverse('projects:memberships-list')}?project={project.id}"
+        url = f"{reverse('projects:membership-list')}?project={project.id}"
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["id"] == project_membership.id
+        assert response.data["success"] is True
+        assert len(response.data["data"]) == 1
+        assert response.data["data"][0]["id"] == project_membership.id
 
     def test_filter_by_status(self, auth_client, project_membership):
         """Test filtering memberships by status"""
         url = (
-            f"{reverse('projects:memberships-list')}?status={project_membership.status}"
+            f"{reverse('projects:membership-list')}?status={project_membership.status}"
         )
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) >= 1
-        assert response.data[0]["status"] == project_membership.status
+        assert response.data["success"] is True
+        assert len(response.data["data"]) >= 1
+        assert response.data["data"][0]["status"] == project_membership.status
 
     def test_create_membership(self, auth_client, user, project, role):
         """Test creating a project membership"""
         project_role = ProjectRole.objects.create(
             project=project, role=role, number_required=1
         )
-        url = reverse("projects:memberships-list")
+
+        # Create a different user to join the project (not the owner)
+        from apps.users.tests.factories import VerifiedUserFactory
+
+        joining_user = VerifiedUserFactory()
+        auth_client.force_authenticate(user=joining_user)
+
+        url = reverse("projects:membership-create")
         data = {
-            "user_id": user.id,
             "project_id": project.id,
             "role_id": project_role.id,
-            "status": "pending",
         }
 
         response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["user_id"] == data["user_id"]
-        assert response.data["project_id"] == data["project_id"]
-        assert response.data["role_id"] == data["role_id"]
-        assert response.data["status"] == data["status"]
+        assert response.data["success"] is True
+        assert "Project join request submitted successfully" in response.data["message"]
+        assert response.data["data"]["project_id"] == data["project_id"]
+        assert response.data["data"]["role_id"] == data["role_id"]
+        assert response.data["data"]["status"] == "pending"
 
         # Check if membership was created in database
-        membership = ProjectMembership.objects.get(id=response.data["id"])
-        assert membership.user_id == data["user_id"]
+        membership = ProjectMembership.objects.get(id=response.data["data"]["id"])
+        assert membership.user_id == joining_user.id
         assert membership.project_id == data["project_id"]
+
+    def test_update_membership_status(self, auth_client, project_membership):
+        """Test updating membership status"""
+        # Ensure the authenticated user is the project owner
+        auth_client.force_authenticate(user=project_membership.project.owner)
+
+        url = reverse(
+            "projects:membership-update-status",
+            kwargs={"membership_id": project_membership.id},
+        )
+        data = {"status": "approved"}
+
+        response = auth_client.patch(url, data, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert "Membership request approved successfully" in response.data["message"]
+        assert response.data["data"]["status"] == "approved"
+
+        # Check if membership was updated in database
+        project_membership.refresh_from_db()
+        assert project_membership.status == "approved"

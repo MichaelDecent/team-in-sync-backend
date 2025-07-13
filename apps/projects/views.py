@@ -1,11 +1,12 @@
 from django.db import transaction
 from django.db.models import Q
 from django_filters import rest_framework as filters
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.utils.api_response import APIResponse
 
@@ -14,6 +15,8 @@ from .models import Project, ProjectMembership, FavoriteProject
 from .serializers import (
     ProjectDetailSerializer,
     ProjectMembershipSerializer,
+    ProjectMembershipCreateSerializer,
+    ProjectMembershipStatusUpdateSerializer,
     ProjectSerializer,
     FavoriteProjectSerializer,
 )
@@ -162,60 +165,108 @@ class FavoriteProjectViewSet(viewsets.ModelViewSet):
         return APIResponse.success(message="Project removed from favorites")
 
 
-@extend_schema(tags=["Projects Memberships"])
-class ProjectMembershipViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing project memberships.
-    """
+@extend_schema(tags=["Project Memberships"])
+class ProjectMembershipListView(APIView):
+    """View for listing project memberships with optional filtering"""
 
-    queryset = ProjectMembership.objects.all()
-    serializer_class = ProjectMembershipSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        """Filter memberships based on query params"""
+    @extend_schema(
+        description="List project memberships with optional filtering",
+        parameters=[
+            OpenApiParameter(
+                name="project",
+                description="Filter by project ID",
+                required=False,
+                type=int,
+            ),
+            OpenApiParameter(
+                name="user",
+                description="Filter by user ID",
+                required=False,
+                type=int,
+            ),
+            OpenApiParameter(
+                name="status",
+                description="Filter by status",
+                required=False,
+                type=str,
+                enum=["pending", "approved", "rejected"],
+            ),
+        ],
+    )
+    def get(self, request):
+        """List project memberships with optional filtering"""
         queryset = ProjectMembership.objects.all()
 
-        project_id = self.request.query_params.get("project", None)
+        project_id = request.query_params.get("project", None)
         if project_id:
             queryset = queryset.filter(project_id=project_id)
 
-        user_id = self.request.query_params.get("user", None)
+        user_id = request.query_params.get("user", None)
         if user_id:
             queryset = queryset.filter(user_id=user_id)
 
-        status = self.request.query_params.get("status", None)
+        status = request.query_params.get("status", None)
         if status:
             queryset = queryset.filter(status=status)
 
-        return queryset
+        serializer = ProjectMembershipSerializer(queryset, many=True)
+        return APIResponse.success(data=serializer.data)
 
-    def create(self, request, *args, **kwargs):
-        """Create a membership (join request)"""
-        response = super().create(request, *args, **kwargs)
 
-        membership = ProjectMembership.objects.get(id=response.data["id"])
+@extend_schema(tags=["Project Memberships"])
+class ProjectMembershipCreateView(APIView):
+    """View for joining a project by creating a membership request"""
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProjectMembershipCreateSerializer
+
+    @extend_schema(description="Join a project by creating a membership request")
+    def post(self, request):
+        """Join a project by creating a membership request"""
+        serializer = ProjectMembershipCreateSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save()
+
         NotificationService.create_join_request_notification(membership)
 
-        return response
+        response_serializer = ProjectMembershipSerializer(membership)
+        return APIResponse.created(
+            data=response_serializer.data,
+            message="Project join request submitted successfully",
+        )
 
-    @action(detail=True, methods=["patch"])
-    def update_status(self, request, pk=None):
-        """Update membership status (accept/reject)"""
-        membership = self.get_object()
-        status = request.data.get("status")
 
-        if request.user != membership.project.owner:
-            return Response(
-                {"detail": "Only project owner can update membership status."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+@extend_schema(tags=["Project Memberships"])
+class ProjectMembershipStatusUpdateView(APIView):
+    """View for updating project membership status (approve/reject)"""
 
-        membership.status = status
-        membership.save()
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ProjectMembershipStatusUpdateSerializer
 
-        accepted = status == "approved"
+    @extend_schema(description="Approve or reject a membership request")
+    def patch(self, request, membership_id):
+        """Update membership status (approve/reject)"""
+        try:
+            membership = ProjectMembership.objects.get(id=membership_id)
+        except ProjectMembership.DoesNotExist:
+            return APIResponse.not_found("Membership not found")
+
+        serializer = ProjectMembershipStatusUpdateSerializer(
+            membership, data=request.data, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        accepted = membership.status == "approved"
         NotificationService.create_request_response_notification(membership, accepted)
 
-        serializer = self.get_serializer(membership)
-        return Response(serializer.data)
+        response_serializer = ProjectMembershipSerializer(membership)
+        status_message = "approved" if accepted else "rejected"
+        return APIResponse.success(
+            data=response_serializer.data,
+            message=f"Membership request {status_message} successfully",
+        )

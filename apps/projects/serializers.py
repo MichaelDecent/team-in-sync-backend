@@ -200,6 +200,97 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         return obj.role.role.name
 
 
+class ProjectMembershipCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating project memberships (joining projects)"""
+
+    project_id = serializers.PrimaryKeyRelatedField(
+        source="project", queryset=Project.objects.all()
+    )
+    role_id = serializers.PrimaryKeyRelatedField(
+        source="role", queryset=ProjectRole.objects.all()
+    )
+
+    class Meta:
+        model = ProjectMembership
+        fields = ["project_id", "role_id"]
+
+    def validate(self, data):
+        """Validate the join request"""
+        user = self.context["request"].user
+        project = data["project"]
+        role = data["role"]
+
+        # Check if user is already a member of this project with this role
+        if ProjectMembership.objects.filter(
+            user=user, project=project, role=role
+        ).exists():
+            raise serializers.ValidationError(
+                "You have already applied for this role in this project."
+            )
+
+        # Check if the role belongs to the project
+        if role.project != project:
+            raise serializers.ValidationError(
+                "The specified role does not belong to this project."
+            )
+
+        # Check if user is the project owner
+        if project.owner == user:
+            raise serializers.ValidationError(
+                "Project owners cannot join their own projects as members."
+            )
+
+        return data
+
+    def create(self, validated_data):
+        """Create the membership with the current user"""
+        validated_data["user"] = self.context["request"].user
+        validated_data["status"] = "pending"
+        return super().create(validated_data)
+
+
+class ProjectMembershipStatusUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating project membership status (approve/reject)"""
+
+    status = serializers.ChoiceField(
+        choices=[("approved", "Approved"), ("rejected", "Rejected")],
+        help_text="Status to update the membership to",
+    )
+
+    class Meta:
+        model = ProjectMembership
+        fields = ["status"]
+
+    def validate_status(self, value):
+        """Validate the status change"""
+        membership = self.instance
+
+        # Check if the membership is already in the requested status
+        if membership.status == value:
+            raise serializers.ValidationError(f"Membership is already {value}.")
+
+        # Only allow changing from 'pending' to 'approved' or 'rejected'
+        if membership.status != "pending":
+            raise serializers.ValidationError(
+                f"Cannot change status from '{membership.status}' to '{value}'."
+            )
+
+        return value
+
+    def validate(self, data):
+        """Additional validation for the entire serializer"""
+        membership = self.instance
+        user = self.context["request"].user
+
+        # Only project owners can update membership status
+        if membership.project.owner != user:
+            raise serializers.ValidationError(
+                "Only project owners can update membership status."
+            )
+
+        return data
+
+
 class ProjectDetailSerializer(ProjectSerializer):
     """Extended serializer for project details including team members"""
 
