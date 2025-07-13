@@ -39,7 +39,9 @@ class TestProjectViewSet:
         assert project.required_roles.count() == 1
 
         # Check custom role
-        filtered_role = project.required_roles.filter(role__name="Data Scientist").first()
+        filtered_role = project.required_roles.filter(
+            role__name="Data Scientist"
+        ).first()
         assert filtered_role is not None
         assert filtered_role.number_required == 1
         assert filtered_role.required_skills.count() == 2
@@ -92,8 +94,8 @@ class TestProjectMembershipViewSet:
         )
         url = reverse("projects:memberships-list")
         data = {
-            "user": user.id,
-            "project": project.id,
+            "user_id": user.id,
+            "project_id": project.id,
             "role_id": project_role.id,
             "status": "pending",
         }
@@ -101,12 +103,12 @@ class TestProjectMembershipViewSet:
         response = auth_client.post(url, data, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["user"] == data["user"]
-        assert response.data["project"] == data["project"]
+        assert response.data["user_id"] == data["user_id"]
+        assert response.data["project_id"] == data["project_id"]
         assert response.data["role_id"] == data["role_id"]
         assert response.data["status"] == data["status"]
 
         # Check if membership was created in database
         membership = ProjectMembership.objects.get(id=response.data["id"])
-        assert membership.user_id == data["user"]
-        assert membership.project_id == data["project"]
+        assert membership.user_id == data["user_id"]
+        assert membership.project_id == data["project_id"]

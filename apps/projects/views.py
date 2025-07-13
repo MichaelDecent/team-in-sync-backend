@@ -117,33 +117,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=["post"])
-    def add_to_favorites(self, request, pk=None):
-        """Add a project to user's favorites"""
-        project = self.get_object()
-        user = request.user
-
-        # Check if already favorited
-        if FavoriteProject.objects.filter(user=user, project=project).exists():
-            return APIResponse.error(message="Project is already in your favorites")
-
-        # Add to favorites
-        FavoriteProject.objects.create(user=user, project=project)
-        return APIResponse.success(message="Project added to favorites")
-
-    @action(detail=True, methods=["delete"])
-    def remove_from_favorites(self, request, pk=None):
-        """Remove a project from user's favorites"""
-        project = self.get_object()
-        user = request.user
-
-        try:
-            favorite = FavoriteProject.objects.get(user=user, project=project)
-            favorite.delete()
-            return APIResponse.success(message="Project removed from favorites")
-        except FavoriteProject.DoesNotExist:
-            return APIResponse.error(message="Project is not in your favorites")
-
 
 @extend_schema_view(
     list=extend_schema(description="List user's favorite projects"),
@@ -173,11 +146,9 @@ class FavoriteProjectViewSet(viewsets.ModelViewSet):
         except Project.DoesNotExist:
             return APIResponse.error(message="Project not found")
 
-        # Check if already favorited
         if FavoriteProject.objects.filter(user=request.user, project=project).exists():
             return APIResponse.error(message="Project is already in your favorites")
 
-        # Add to favorites
         favorite = FavoriteProject.objects.create(user=request.user, project=project)
         serializer = self.get_serializer(favorite)
         return APIResponse.success(

@@ -225,8 +225,8 @@ class TestProjectMembershipSerializer:
         )
 
         data = {
-            "user": user.id,
-            "project": project.id,
+            "user_id": user.id,
+            "project_id": project.id,
             "role_id": project_role.id,
             "status": "pending",
         }

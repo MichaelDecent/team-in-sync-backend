@@ -6,23 +6,24 @@ from apps.notifications.models import Notification, NotificationType
 
 
 @pytest.mark.django_db
-class TestNotificationViewSet:
-    """Test NotificationViewSet"""
+class TestNotificationViews:
+    """Test Notification APIViews"""
 
     def test_list_notifications(
         self, auth_client, user, user_notification, other_user_notification
     ):
         """Test listing notifications (should only include the user's notifications)"""
-        url = reverse("notifications:notifications-list")
+        url = reverse("notifications:notification-list")
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]["id"] == user_notification.id
-        assert response.data[0]["title"] == user_notification.title
+        assert response.data["success"] is True
+        assert len(response.data["data"]) == 1
+        assert response.data["data"][0]["id"] == user_notification.id
+        assert response.data["data"][0]["title"] == user_notification.title
 
         # Check that other user's notifications are not included
-        for notification in response.data:
+        for notification in response.data["data"]:
             assert notification["id"] != other_user_notification.id
 
     def test_mark_notification_read(self, auth_client, user_notification):
@@ -30,7 +31,7 @@ class TestNotificationViewSet:
         assert user_notification.read is False  # Should be unread initially
 
         url = reverse(
-            "notifications:notifications-mark-read", kwargs={"pk": user_notification.id}
+            "notifications:mark-read", kwargs={"notification_id": user_notification.id}
         )
         response = auth_client.patch(url)
 
@@ -58,7 +59,7 @@ class TestNotificationViewSet:
         assert Notification.objects.filter(recipient=user, read=False).count() == 3
 
         # Mark all as read
-        url = reverse("notifications:notifications-mark-all-read")
+        url = reverse("notifications:mark-all-read")
         response = auth_client.post(url)
 
         assert response.status_code == status.HTTP_200_OK
@@ -90,7 +91,7 @@ class TestNotificationViewSet:
         )
 
         # Get unread count
-        url = reverse("notifications:notifications-unread-count")
+        url = reverse("notifications:unread-count")
         response = auth_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
@@ -102,10 +103,38 @@ class TestNotificationViewSet:
     ):
         """Test that a user cannot access another user's notification"""
         url = reverse(
-            "notifications:notifications-detail",
-            kwargs={"pk": other_user_notification.id},
+            "notifications:notification-detail",
+            kwargs={"notification_id": other_user_notification.id},
         )
         response = auth_client.get(url)
 
         # Should return 404 rather than 403 for security reasons
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_notification(self, auth_client, user_notification):
+        """Test deleting a notification"""
+        url = reverse(
+            "notifications:notification-detail",
+            kwargs={"notification_id": user_notification.id},
+        )
+        response = auth_client.delete(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert "Notification deleted successfully" in response.data["message"]
+
+        # Check notification was deleted from database
+        assert not Notification.objects.filter(id=user_notification.id).exists()
+
+    def test_get_notification_detail(self, auth_client, user_notification):
+        """Test getting a specific notification"""
+        url = reverse(
+            "notifications:notification-detail",
+            kwargs={"notification_id": user_notification.id},
+        )
+        response = auth_client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["success"] is True
+        assert response.data["data"]["id"] == user_notification.id
+        assert response.data["data"]["title"] == user_notification.title

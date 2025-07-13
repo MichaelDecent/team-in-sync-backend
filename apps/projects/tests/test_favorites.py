@@ -57,8 +57,8 @@ class FavoriteProjectAPITest(APITestCase):
 
     def test_add_to_favorites(self):
         """Test adding a project to favorites"""
-        url = f"/api/v1/projects/projects/{self.project.id}/add_to_favorites/"
-        response = self.client.post(url)
+        url = "/api/v1/projects/favorites/"
+        response = self.client.post(url, {"project": self.project.id})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(
@@ -70,9 +70,9 @@ class FavoriteProjectAPITest(APITestCase):
     def test_remove_from_favorites(self):
         """Test removing a project from favorites"""
         # First add to favorites
-        FavoriteProject.objects.create(user=self.user, project=self.project)
+        favorite = FavoriteProject.objects.create(user=self.user, project=self.project)
 
-        url = f"/api/v1/projects/projects/{self.project.id}/remove_from_favorites/"
+        url = f"/api/v1/projects/favorites/{favorite.id}/"
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

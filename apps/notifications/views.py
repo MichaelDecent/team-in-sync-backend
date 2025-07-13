@@ -1,6 +1,6 @@
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import permissions, viewsets
-from rest_framework.decorators import action
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from rest_framework import permissions
+from rest_framework.views import APIView
 
 from core.utils.api_response import APIResponse
 
@@ -8,8 +8,13 @@ from .models import Notification, NotificationType
 from .serializers import NotificationSerializer
 
 
-@extend_schema_view(
-    list=extend_schema(
+@extend_schema(tags=["Notifications"])
+class NotificationListView(APIView):
+    """View for listing notifications with optional filtering"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
         description="List all notifications for the current user with optional filtering",
         parameters=[
             OpenApiParameter(
@@ -26,58 +31,102 @@ from .serializers import NotificationSerializer
                 type=bool,
             ),
         ],
-    ),
-    mark_all_read=extend_schema(description="Mark all notifications as read"),
-    destroy=extend_schema(description="Delete a specific notification"),
-)
-@extend_schema(tags=["Notifications"])
-class NotificationViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing notifications"""
+    )
+    def get(self, request):
+        """Get filtered list of notifications"""
+        queryset = Notification.objects.filter(recipient=request.user)
 
-    serializer_class = NotificationSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ["get", "delete"]  # Only allow GET and DELETE operations
-
-    def get_queryset(self):
-        """Filter notifications to only show the current user's"""
-        queryset = Notification.objects.filter(recipient=self.request.user)
-
-        notification_type = self.request.query_params.get("type", None)
+        notification_type = request.query_params.get("type", None)
         if notification_type and notification_type in [
             choice[0] for choice in NotificationType.choices
         ]:
             queryset = queryset.filter(type=notification_type)
 
-        read_status = self.request.query_params.get("read", None)
+        read_status = request.query_params.get("read", None)
         if read_status is not None:
             read_bool = read_status.lower() in ["true", "1", "yes"]
             queryset = queryset.filter(read=read_bool)
 
-        return queryset
+        serializer = NotificationSerializer(queryset, many=True)
+        return APIResponse.success(data=serializer.data)
 
-    def destroy(self, request, *args, **kwargs):
+
+@extend_schema(tags=["Notifications"])
+class NotificationDetailView(APIView):
+    """View for retrieving and deleting individual notifications"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(description="Retrieve a specific notification")
+    def get(self, request, notification_id):
+        """Get a specific notification"""
+        try:
+            notification = Notification.objects.get(
+                id=notification_id, recipient=request.user
+            )
+        except Notification.DoesNotExist:
+            return APIResponse.not_found("Notification not found")
+
+        serializer = NotificationSerializer(notification)
+        return APIResponse.success(data=serializer.data)
+
+    @extend_schema(description="Delete a specific notification")
+    def delete(self, request, notification_id):
         """Delete a notification"""
-        notification = self.get_object()
+        try:
+            notification = Notification.objects.get(
+                id=notification_id, recipient=request.user
+            )
+        except Notification.DoesNotExist:
+            return APIResponse.not_found("Notification not found")
+
         notification.delete()
         return APIResponse.success(message="Notification deleted successfully")
 
-    @action(detail=True, methods=["patch"])
-    def mark_read(self, request, pk=None):
+
+@extend_schema(tags=["Notifications"])
+class MarkNotificationReadView(APIView):
+    """View for marking a notification as read"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(description="Mark a notification as read")
+    def patch(self, request, notification_id):
         """Mark a notification as read"""
-        notification = self.get_object()
+        try:
+            notification = Notification.objects.get(
+                id=notification_id, recipient=request.user
+            )
+        except Notification.DoesNotExist:
+            return APIResponse.not_found("Notification not found")
+
         notification.read = True
         notification.save()
         return APIResponse.success(data=NotificationSerializer(notification).data)
 
-    @action(detail=False, methods=["post"])
-    def mark_all_read(self, request):
+
+@extend_schema(tags=["Notifications"])
+class MarkAllNotificationsReadView(APIView):
+    """View for marking all notifications as read"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(description="Mark all notifications as read")
+    def post(self, request):
         """Mark all notifications as read"""
-        queryset = self.get_queryset()
+        queryset = Notification.objects.filter(recipient=request.user)
         queryset.update(read=True)
         return APIResponse.success(message="All notifications marked as read")
 
-    @action(detail=False, methods=["get"])
-    def unread_count(self, request):
+
+@extend_schema(tags=["Notifications"])
+class UnreadCountView(APIView):
+    """View for getting unread notification count"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(description="Get count of unread notifications")
+    def get(self, request):
         """Get count of unread notifications"""
-        count = self.get_queryset().filter(read=False).count()
+        count = Notification.objects.filter(recipient=request.user, read=False).count()
         return APIResponse.success(data={"count": count})

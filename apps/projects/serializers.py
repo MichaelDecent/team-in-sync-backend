@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.users.models.auth_models import User
 from apps.users.models.profile_models import Role, Skill
 
 from .models import (
@@ -142,14 +143,12 @@ class ProjectSerializer(serializers.ModelSerializer):
             skill_names = role_data.pop("skills_input", [])
             role_name = role_data.pop("role_input", None)
 
-            # Process role by name
             if role_name:
                 role, _ = Role.objects.get_or_create(name=role_name)
                 role_data["role"] = role
 
             project_role = ProjectRole.objects.create(project=project, **role_data)
 
-            # Add skills by name
             for skill_name in skill_names:
                 skill, _ = Skill.objects.get_or_create(name=skill_name)
                 ProjectRoleSkill.objects.create(project_role=project_role, skill=skill)
@@ -163,14 +162,24 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
     role_id = serializers.PrimaryKeyRelatedField(
         source="role", queryset=ProjectRole.objects.all()
     )
+    user_id = serializers.PrimaryKeyRelatedField(
+        source="user", queryset=User.objects.all()
+    )
+    project_id = serializers.PrimaryKeyRelatedField(
+        source="project", queryset=Project.objects.all()
+    )
+    full_name = serializers.SerializerMethodField()
+    role_name = serializers.SerializerMethodField()
     profile_picture_url = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectMembership
         fields = [
             "id",
-            "user",
-            "project",
+            "user_id",
+            "project_id",
+            "full_name",
+            "role_name",
             "profile_picture_url",
             "role_id",
             "status",
@@ -183,6 +192,12 @@ class ProjectMembershipSerializer(serializers.ModelSerializer):
         if profile and profile.profile_picture:
             return profile.profile_picture.url
         return None
+
+    def get_full_name(self, obj):
+        return obj.user.profile.full_name
+
+    def get_role_name(self, obj):
+        return obj.role.role.name
 
 
 class ProjectDetailSerializer(ProjectSerializer):
