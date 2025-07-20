@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import Q
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
-from rest_framework import permissions, status, viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
@@ -18,7 +18,6 @@ from .serializers import (
     ProjectMembershipCreateSerializer,
     ProjectMembershipStatusUpdateSerializer,
     ProjectSerializer,
-    FavoriteProjectSerializer,
 )
 
 
@@ -104,9 +103,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(
-            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        return APIResponse.created(
+            data=serializer.data,
+            message="Project created successfully",
         )
 
     @action(detail=False, methods=["get"])
@@ -131,13 +130,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
 class FavoriteProjectViewSet(viewsets.ModelViewSet):
     """ViewSet for managing user favorite projects"""
 
-    serializer_class = FavoriteProjectSerializer
+    serializer_class = ProjectSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ["get", "post", "delete"]
 
     def get_queryset(self):
-        """Filter to only show current user's favorites"""
-        return FavoriteProject.objects.filter(user=self.request.user)
+        """Filter to only show current user's favorite projects"""
+        return Project.objects.filter(favorited_by__user=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """Add a project to favorites"""
@@ -153,16 +152,16 @@ class FavoriteProjectViewSet(viewsets.ModelViewSet):
         if FavoriteProject.objects.filter(user=request.user, project=project).exists():
             return APIResponse.error(message="Project is already in your favorites")
 
-        favorite = FavoriteProject.objects.create(user=request.user, project=project)
-        serializer = self.get_serializer(favorite)
+        FavoriteProject.objects.create(user=request.user, project=project)
+        serializer = self.get_serializer(project)
         return APIResponse.success(
             data=serializer.data, message="Project added to favorites"
         )
 
     def destroy(self, request, *args, **kwargs):
         """Remove a project from favorites"""
-        favorite = self.get_object()
-        favorite.delete()
+        project = self.get_object()
+        FavoriteProject.objects.filter(user=request.user, project=project).delete()
         return APIResponse.success(message="Project removed from favorites")
 
 
@@ -208,9 +207,9 @@ class ProjectMembershipListView(APIView):
         if user_id:
             queryset = queryset.filter(user_id=user_id)
 
-        status = request.query_params.get("status", None)
-        if status:
-            queryset = queryset.filter(status=status)
+        status_filter = request.query_params.get("status", None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
 
         serializer = ProjectMembershipSerializer(queryset, many=True)
         return APIResponse.success(data=serializer.data)
